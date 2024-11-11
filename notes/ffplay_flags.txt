@@ -1,0 +1,248 @@
+fflive version ffglitch-0.10.1 Copyright (c) 2003-2024 the FFmpeg developers
+  FFglitch Copyright (c) 2017-2024 Ramiro Polla
+  built with gcc 9 (Ubuntu 9.4.0-1ubuntu1~20.04.2)
+  configuration:
+--disable-doc
+--enable-gpl
+--enable-static
+--disable-shared
+--disable-autodetect
+--disable-iconv
+--enable-zlib
+--enable-libxvid
+--enable-sdl2
+--enable-rtmidi
+--enable-libzmq
+
+
+fflive version ffglitch-0.10.1 Copyright (c) 2003-2024 the FFmpeg developers
+  FFglitch Copyright (c) 2017-2024 Ramiro Polla
+  built with gcc 12-win32 (GCC)
+  configuration:
+--cross-prefix=x86_64-w64-mingw32-
+--arch=x86_64
+--target-os=mingw64
+--extra-ldflags=-static
+--pkg-config-flags=--static
+--disable-doc
+--enable-gpl
+--enable-static
+--disable-shared
+--disable-autodetect
+--disable-iconv
+--enable-zlib
+--enable-libxvid
+--enable-sdl2
+--enable-rtmidi
+--enable-libzmq
+
+
+
+ffplay version 6.1.1-full_build-www.gyan.dev Copyright (c) 2003-2023 the FFmpeg developers
+  built with gcc 12.2.0 (Rev10, Built by MSYS2 project)
+  configuration:
+--disable-autodetect
+--disable-w32threads
+--enable-amf
+--enable-avisynth
+--enable-bzlib
+--enable-chromaprint
+--enable-cuda-llvm
+--enable-cuvid
+--enable-d3d11va
+--enable-dxva2
+--enable-ffnvcodec
+--enable-fontconfig
+--enable-frei0r
+--enable-gmp
+--enable-gnutls
+--enable-gpl
+--enable-iconv
+--enable-ladspa
+--enable-libaom
+--enable-libaribb24
+--enable-libaribcaption
+--enable-libass
+--enable-libbluray
+--enable-libbs2b
+--enable-libcaca
+--enable-libcdio
+--enable-libcodec2
+--enable-libdav1d
+--enable-libdavs2
+--enable-libflite
+--enable-libfreetype
+--enable-libfribidi
+--enable-libgme
+--enable-libgsm
+--enable-libharfbuzz
+--enable-libilbc
+--enable-libjxl
+--enable-liblensfun
+--enable-libmodplug
+--enable-libmp3lame
+--enable-libmysofa
+--enable-libopencore-amrnb
+--enable-libopencore-amrwb
+--enable-libopenjpeg
+--enable-libopenmpt
+--enable-libopus
+--enable-libplacebo
+--enable-librav1e
+--enable-librist
+--enable-librubberband
+--enable-libshaderc
+--enable-libshine
+--enable-libsnappy
+--enable-libsoxr
+--enable-libspeex
+--enable-libsrt
+--enable-libssh
+--enable-libsvtav1
+--enable-libtheora
+--enable-libtwolame
+--enable-libuavs3d
+--enable-libvidstab
+--enable-libvmaf
+--enable-libvo-amrwbenc
+--enable-libvorbis
+--enable-libvpl
+--enable-libvpx
+--enable-libwebp
+--enable-libx264
+--enable-libx265
+--enable-libxavs2
+--enable-libxml2
+--enable-libxvid
+--enable-libzimg
+--enable-libzmq
+--enable-libzvbi
+--enable-lzma
+--enable-mediafoundation
+--enable-nvdec
+--enable-nvenc
+--enable-opencl
+--enable-sdl2
+--enable-shared
+--enable-version3
+--enable-vulkan
+--enable-zlib
+  libavutil      58. 29.100 / 58. 29.100
+  libavcodec     60. 31.102 / 60. 31.102
+  libavformat    60. 16.100 / 60. 16.100
+  libavdevice    60.  3.100 / 60.  3.100
+  libavfilter     9. 12.100 /  9. 12.100
+  libswscale      7.  5.100 /  7.  5.100
+  libswresample   4. 12.100 /  4. 12.100
+  libpostproc    57.  3.100 / 57.  3.100
+Simple media player
+usage: ffplay [options] input_file
+
+
+ffplay version N-114842-g639013aafc-20240417 Copyright (c) 2003-2024 the FFmpeg developers
+  built with gcc 13.2.0 (crosstool-NG 1.26.0.65_ecc5e41)
+  configuration:
+--prefix=/ffbuild/prefix
+--pkg-config-flags=--static
+--pkg-config=pkg-config
+--cross-prefix=x86_64-w64-mingw32-
+--arch=x86_64
+--target-os=mingw32
+
+--disable-debug
+--disable-libdrm
+--disable-libfdk-aac
+--disable-libpulse
+--disable-libxcb
+--disable-static
+--disable-w32threads
+--disable-xlib
+--enable-amf
+--enable-avisynth
+--enable-chromaprint
+--enable-cuda-llvm
+--enable-ffnvcodec
+--enable-fontconfig
+--enable-frei0r
+--enable-gmp
+--enable-gpl
+--enable-iconv
+--enable-libaom
+--enable-libaribb24
+--enable-libaribcaption
+--enable-libass
+--enable-libbluray
+--enable-libdav1d
+--enable-libdavs2
+--enable-libdvdnav
+--enable-libdvdread
+--enable-libfreetype
+--enable-libfribidi
+--enable-libgme
+--enable-libharfbuzz
+--enable-libjxl
+--enable-libkvazaar
+--enable-libmp3lame
+--enable-libopencore-amrnb
+--enable-libopencore-amrwb
+--enable-libopenh264
+--enable-libopenjpeg
+--enable-libopenmpt
+--enable-libopus
+--enable-libplacebo
+--enable-librav1e
+--enable-librist
+--enable-librubberband
+--enable-libshaderc
+--enable-libsoxr
+--enable-libsrt
+--enable-libssh
+--enable-libsvtav1
+--enable-libtheora
+--enable-libtwolame
+--enable-libuavs3d
+--enable-libvidstab
+--enable-libvmaf
+--enable-libvorbis
+--enable-libvpl
+--enable-libvpx
+--enable-libwebp
+--enable-libx264
+--enable-libx265
+--enable-libxavs2
+--enable-libxml2
+--enable-libxvid
+--enable-libzimg
+--enable-libzvbi
+--enable-lv2
+--enable-openal
+--enable-opencl
+--enable-pthreads
+--enable-schannel
+--enable-sdl2
+--enable-shared
+--enable-vaapi
+--enable-version3
+--enable-vulkan
+--enable-zlib
+--extra-cflags=-DLIBTWOLAME_STATIC
+--extra-cxxflags=
+--extra-libs=-lgomp
+--extra-ldflags=-pthread
+--extra-ldexeflags=
+--cc=x86_64-w64-mingw32-gcc
+--cxx=x86_64-w64-mingw32-g++
+--ar=x86_64-w64-mingw32-gcc-ar
+--ranlib=x86_64-w64-mingw32-gcc-ranlib
+--nm=x86_64-w64-mingw32-gcc-nm
+--extra-version=20240417
+  libavutil      59. 15.100 / 59. 15.100
+  libavcodec     61.  5.103 / 61.  5.103
+  libavformat    61.  3.100 / 61.  3.100
+  libavdevice    61.  2.100 / 61.  2.100
+  libavfilter    10.  2.101 / 10.  2.101
+  libswscale      8.  2.100 /  8.  2.100
+  libswresample   5.  2.100 /  5.  2.100
+  libpostproc    58.  2.100 / 58.  2.100
+Simple media player
+usage: ffplay [options] input_file

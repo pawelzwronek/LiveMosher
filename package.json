@@ -1,0 +1,8 @@
+{
+    "scripts": {
+        "create-venv": "python -m venv venv",
+        "check_vermin": "vermin -vv .",
+        "pyinstaller": "run_pyinstaller.sh",
+        "pyinstaller_win": "run_pyinstaller.cmd"
+    }
+}

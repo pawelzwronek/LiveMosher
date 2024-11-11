@@ -1,0 +1,11 @@
+
+When adding a theme, the conocical form is:
+
+1. Add the tcl file, eg. "page-wheat.tcl".
+
+2. If there are required png file add them in a directory
+   of the same name as the theme, in this example "page-wheat".
+
+3. Add entries to "themes_list.tcl" 
+
+

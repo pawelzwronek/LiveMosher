@@ -1,0 +1,22 @@
+__pycache__/
+build/
+dist*/
+temp/
+venv*/
+video/
+
+My moshers*/
+
+# pyinstaller
+/*.spec
+
+# Mac OS
+.DS_Store
+
+# App project file
+*.lmp
+
+*.ini
+*.mp4
+*.raw
+glitched_*

@@ -1,0 +1,2 @@
+-r requirements-all.txt
+pywin32
