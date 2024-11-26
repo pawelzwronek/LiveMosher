@@ -23,7 +23,7 @@ from lib.misc import IS_MAC, IS_WIN, find_next_output_file, find_relative_path, 
                     normalize_path, path_replace_not_allowed_chars, resolve_relative_path
 from lib.process import Line, Process
 
-from script import Script, Example_moshers
+from script import Script
 from LiveMosher1_support import LiveMosherGui, start_up
 
 
@@ -32,10 +32,10 @@ from LiveMosher1_support import LiveMosherGui, start_up
 #pylint: disable=broad-except
 
 NAME = 'Live Mosher'
-TITLE = NAME + ' {APP_VERSION}'
 SCRIPTS_DIR = 'Examples'
 EDITED_SCRIPTS_DIR = 'My moshers'
 PROJECT_EXT = '.lmp'
+VERSION_FILE = 'version.txt'
 
 MIN_SPEED = 0.1
 MAX_SPEED = 5
@@ -43,7 +43,6 @@ MAX_SPEED = 5
 class LiveMosherApp(LiveMosherGui):
     def __init__(self):
         super().__init__(NAME)
-        self.top.title(TITLE)
 
         self.this_dir = os.path.dirname(os.path.abspath(__file__))
         self.app_dir = normalize_path(os.path.join(self.this_dir, '..'))
@@ -64,6 +63,16 @@ class LiveMosherApp(LiveMosherGui):
         self.project_dir = ''
         self.is_app_packed = not self.this_dir.endswith('src')
 
+        try:
+            version_file = os.path.join(self.this_dir, VERSION_FILE)
+            if not os.path.exists(version_file):
+                version_file = os.path.join(self.this_dir, '..', VERSION_FILE)
+            with open(version_file, 'r', encoding='utf-8') as f:
+                self.version = f.read().strip()
+        except Exception as _e:
+            self.version = ''
+
+        self.top.title(f'{NAME} {self.version}')
 
         self.config = configparser.ConfigParser()
         self.config['Main'] = {
@@ -425,7 +434,7 @@ Have fun!
             try:
                 os.makedirs(scripts_dir, exist_ok=True)
                 with open(os.path.join(scripts_dir, 'basic.js'), 'w', encoding='utf-8') as f:
-                    f.write(Example_moshers[0])
+                    f.write(self.get_example_mosher(0))
                 self.scripts_dir = scripts_dir
             except Exception as e:
                 print_error('Error creating scripts dir:', e)
@@ -1907,6 +1916,15 @@ Have fun!
             self.listbox_scripts_menu.add_command(label='Reload list', command=self.update_scripts_list)
             self.listbox_scripts_menu.post(event.x_root, event.y_root)
             self.listbox_scripts_menu.bind("<Leave>", lambda e: self.listbox_scripts_menu.unpost())
+
+    def get_example_mosher(self, no = 0):
+        moshers = ['basic.js']
+        file = os.path.join(self.this_dir, SCRIPTS_DIR, moshers[no])
+        try:
+            with open(file, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as _e:
+            return ''
 
 def show_info(message):
     messagebox.showinfo('Info', message)

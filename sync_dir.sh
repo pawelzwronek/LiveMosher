@@ -12,4 +12,4 @@ if [ "$SRC_DIR" == "$DEST_DIR" ]; then
     exit 1
 fi
 
-rsync -av --exclude-from="$SRC_DIR/.gitignore" --exclude=".git" "$SRC_DIR/" "$DEST_DIR"
+rsync -av --no-perms --exclude-from="$SRC_DIR/.gitignore" --exclude=".git" "$SRC_DIR/" "$DEST_DIR"

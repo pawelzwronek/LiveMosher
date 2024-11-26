@@ -16,7 +16,6 @@ call venv-%OS%\Scripts\activate.bat
 @REM --add-data %TKEXTRAFONT%:gui/fonts/tkextrafont ^
 @REM --exclude-module tkextrafont ^
 
-python3 scripts\before_build.py %OS% && ^
 pyinstaller ^
   --distpath=%DIST% ^
   --icon src/gui/icons/icon.png ^
@@ -26,6 +25,8 @@ pyinstaller ^
   --add-data src/gui/fonts:gui/fonts ^
   --add-data src/gui/themes/waldorf.tcl:gui/themes ^
   --add-data bin/libs/%OS%:. ^
+  --add-data version.txt:. ^
+  --add-data Examples/basic.js:Examples ^
   --exclude-module PIL ^
   --exclude-module pkg_resources ^
   --noupx ^

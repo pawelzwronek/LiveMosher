@@ -12,7 +12,3 @@ class Script:
         self.type = Script.Type.MAIN
         self.is_in_project = False
         self.buildin = buildin
-
-Example_moshers = [
-"""{EXAMPLE1}"""
-]
