@@ -245,3 +245,9 @@ def fix_windows_network_path(path):
     if path and path.startswith('//'):
         path = '\\\\' + path[2:]
     return path
+
+def parse_float(value, default = 0.0):
+    try:
+        return float(value)
+    except ValueError:
+        return default

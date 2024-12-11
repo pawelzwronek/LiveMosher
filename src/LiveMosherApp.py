@@ -20,7 +20,7 @@ from zmq_req import ZmqReq
 from lib.colored_print import print_error, print, print_warn # pylint: disable=redefined-builtin
 from lib.framerate import find_fraction
 from lib.misc import IS_MAC, IS_WIN, find_next_output_file, find_relative_path, fix_windows_network_path, \
-                    normalize_path, path_replace_not_allowed_chars, resolve_relative_path
+                    normalize_path, parse_float, path_replace_not_allowed_chars, resolve_relative_path
 from lib.process import Line, Process
 
 from script import Script
@@ -100,7 +100,8 @@ class LiveMosherApp(LiveMosherGui):
 
         self.w.button_clone.configure(command=self.on_clone_script)
         self.w.button_edit_script.configure(command=self.on_edit_script)
-        self.w.button_lock_time.configure(command=self.on_lock_time)
+        self.w.button_start_mark.configure(command=self.on_start_mark)
+        self.w.button_end_mark.configure(command=self.on_end_mark)
         self.w.button_open_project.configure(command=self.on_open_project)
         self.w.button_play.configure(command=self.on_play)
         self.w.button_play_script.configure(command=self.on_play_script)
@@ -172,6 +173,7 @@ class LiveMosherApp(LiveMosherGui):
         self.output_path = ''
         self.input_duration: float = None
         self.input_duration_alt: float = None
+        self.last_input_duration: float = None
         self._input_fps: float = None
         self._input_fps_file_name: float = None
 
@@ -255,7 +257,7 @@ Have fun!
 
         self.editor.set_text(self.editor_empty_text, self.editor_empty_text_color)
         self.after(1, self.show_hide, self.w.button_edit_script, False)
-        self.on_lock_time()
+        self.place_start_end_mark()
         self.after(1000, self.check_fps, True)
 
         # self.console_log('CWD: ' + self.cwd)
@@ -344,9 +346,12 @@ Have fun!
             'name': 'Project1',
             'video': '', # 'video.mp4',
             'video_size': '0x0',
+            'video_duration': '0',
             'output': '', # 'output.mp4',
             'auto_rename': 'True',
             'mute': 'False',
+            'start_mark_t': '-1',
+            'end_mark_t': '-1',
             'script': '', # 'scripts/simple_script_123.js',
             'script_count': '0',
         }
@@ -446,10 +451,14 @@ Have fun!
         self.w.entry_project_name.insert(tk.END, self.project['Project']['name'])
         self.video_path = self.resolve_relative_path(self.project['Project']['video'])
         self.last_video_size = self.project['Project']['video_size']
+        self.last_input_duration = parse_float(self.project['Project']['video_duration'], 0)
         self.w.entry_video_input.delete(0, tk.END)
         self.w.entry_video_input.insert(tk.END, os.path.basename(self.video_path))
         self.w.is_auto_rename.set(1 if self.project['Project']['auto_rename'] == 'True' else 0)
         self.w.is_mute.set(1 if self.project['Project']['mute'] == 'True' else 0)
+        self.start_mark_t = parse_float(self.project['Project']['start_mark_t'], -1)
+        self.end_mark_t = parse_float(self.project['Project']['end_mark_t'], -1)
+        self.place_start_end_mark()
         self.output_path_base = self.resolve_relative_path(self.project['Project']['output'])
         self.update_output_path()
 
@@ -494,9 +503,12 @@ Have fun!
         project['Project']['name'] = self.w.entry_project_name.get()
         project['Project']['video'] = self.find_relative_path(self.video_path)
         project['Project']['video_size'] = self.last_video_size or '0x0'
+        project['Project']['video_duration'] = f'{self.last_input_duration:.3f}' if self.last_input_duration else '0'
         project['Project']['output'] = self.find_relative_path(self.output_path_base)
         project['Project']['auto_rename'] = 'True' if self.w.is_auto_rename.get() == 1 else 'False'
         project['Project']['mute'] = 'True' if self.w.is_mute.get() == 1 else 'False'
+        project['Project']['start_mark_t'] = f'{self.start_mark_t:.3f}'
+        project['Project']['end_mark_t'] = f'{self.end_mark_t:.3f}'
         project['Project']['script'] = self.find_relative_path(self.selected_script.path) if self.selected_script else ''
         project['Project']['script_count'] = str(len(self.project_scripts))
 
@@ -739,6 +751,7 @@ Have fun!
     def check_ffplay_process(self, window_title):
         next_delay = 100
         self.check_timer_running = True
+        restart_ffplay = False
         try:
             if self.fflive_process:
                 # fflive_process_ok = self.fflive_process_ok
@@ -756,8 +769,11 @@ Have fun!
                     self.kill_ffplay_processes(from_check_timer=True)
                     self.update_play_text()
                 else:
-                    if self.is_playing and not self.ffgac_process and (time.time() - self.last_progres_update_t) > .1 and self.current_frame >= (self.input_frames_count - 5):
+                    end_mark_frame = self.timeToframe(self.end_mark_t)
+                    if self.is_playing and not self.ffgac_process and (time.time() - self.last_progres_update_t) > .1 and self.current_frame >= (end_mark_frame - 5):
                         print('No progress update for 0.1s. End of video detected.')
+                        if not self.is_recording and not self.is_paused:
+                            restart_ffplay = True
                         self.is_playing = False
                         self.is_paused = True
                         self.update_play_text()
@@ -773,6 +789,8 @@ Have fun!
                 self.update_mute_checkbutton()
         finally:
             self.check_timer_running = False
+            if restart_ffplay:
+                self.start_ffplay(start_paused=False)
 
     def stop_check_timer(self):
         if self.check_ffplay_process_timer:
@@ -900,7 +918,7 @@ Have fun!
                 text = 'Force stop'
             self.w.button_record.configure(text=text)
         else:
-            state = tk.NORMAL if self.input_duration is not None else tk.DISABLED
+            state = tk.NORMAL if self.last_input_duration is not None else tk.DISABLED
             self.w.scale_speed.configure(state=state, takefocus=True, cursor='')
             self.w.scale_progress.configure(state=state, takefocus=True, cursor='')
             self.w.button_record.configure(text='Record')
@@ -1089,6 +1107,7 @@ Have fun!
                     calc_frames_count()
             except Exception:
                 pass
+            self.last_input_duration = self.input_duration
             if self.input_duration and self.input_fps:
                 self.input_frames_count = int(self.input_duration * self.input_fps)
                 try:
@@ -1098,6 +1117,8 @@ Have fun!
                         self.input_fps = new_fps
                 except Exception:
                     pass
+                self.project_changed()
+                self.place_start_end_mark()
                 print(f'Video duration: {self.input_duration:.2f} sec, FPS: {self.input_fps:.2f}, Frames: {self.input_frames_count}')
                 self.w.label_total_time.configure(text=self.formatSeconds(self.input_duration))
 
@@ -1226,11 +1247,34 @@ Have fun!
             startS = self.frameToTime(self.current_frame) + seconds
             self.start_ffplay(start_at_sec=startS, start_paused=self.is_paused)
 
-    lock_start_time_at = 0
-    def on_lock_time(self):
-        self.lock_start_time_at = self.frameToTime(self.current_frame)
-        y = self.w.canvas_restart_mark.winfo_y()
-        self.w.canvas_restart_mark.place(x=self.w.scale_progress.winfo_x() + (self.w.scale_progress.winfo_width() - 5) * self.w.scale_progress.get() + 1, y=y)
+    start_mark_t = -1
+    end_mark_t = -1
+    def on_start_mark(self):
+        self.start_mark_t = self.frameToTime(self.current_frame)
+        self.place_start_end_mark()
+        self.start_ffplay(start_at_sec=self.start_mark_t)
+
+    def on_end_mark(self):
+        if self.current_frame < self.input_frames_count - 2:
+            self.end_mark_t = self.frameToTime(self.current_frame)
+        else:
+            self.end_mark_t = -1
+        self.place_start_end_mark()
+        self.start_ffplay(start_at_sec=self.start_mark_t)
+
+    def place_start_end_mark(self):
+        y = self.w.canvas_end_mark.winfo_y()
+        if y == 0:
+            return
+
+        input_duration = self.last_input_duration or parse_float(self.project['Project']['video_duration'], 0)
+        progress = self.start_mark_t / input_duration if (input_duration and self.start_mark_t >= 0) else 0
+        x = self.w.scale_progress.winfo_x() + (self.w.scale_progress.winfo_width() - 5) * progress + 1
+        self.w.canvas_start_mark.place(x=x, y=y)
+
+        progress = self.end_mark_t / input_duration if (input_duration and self.end_mark_t >= 0) else 1
+        x = self.w.scale_progress.winfo_x() + (self.w.scale_progress.winfo_width() - 5) * progress + 1
+        self.w.canvas_end_mark.place(x=x, y=y)
 
     def get_bin(self, bin_name):
         platform = 'win' if IS_WIN else 'mac' if IS_MAC else 'linux'
@@ -1253,7 +1297,8 @@ Have fun!
             return
 
         if start_at_sec is None:
-            start_at_sec = self.lock_start_time_at
+            played_markers = self.start_mark_t <= self.start_video_at <= self.end_mark_t
+            start_at_sec = max(0, self.start_mark_t) if played_markers else 0
 
         try:
             start_at_sec = max(0, start_at_sec)
@@ -1282,7 +1327,7 @@ Have fun!
                 show_info(f'Video not found {video_file}')
                 raise FileNotFoundError(f'Video file not found: {video_file}')
 
-            if start_at_sec == 0:
+            if self.start_video_at == 0:
                 self.w.scale_progress.set(0)
 
             self.current_frame = start_frame
@@ -1297,6 +1342,8 @@ Have fun!
             self.update_play_text()
 
 
+            play_markers = self.start_mark_t <= self.start_video_at <= self.end_mark_t
+
             # Encode input file to mpeg4 raw video stream
             ffgac_command = [
                 self.get_bin('ffgac'),
@@ -1304,6 +1351,7 @@ Have fun!
                 # '-readrate', f'{self.get_speed() * 1.1:.4f}',
                 '-accurate_seek',
                 '-ss', str(self.start_video_at),
+                *(['-to', str(self.end_mark_t)] if play_markers else []),
                 # '-re', # Realtime
                 # '-nostats',
                 '-stats',
@@ -1423,6 +1471,7 @@ Have fun!
                 '-preset', 'medium', # ultrafast superfast veryfast faster fast medium slow slower veryslow placebo
                 '-crf', '18', # Set quality to 18, 0 is lossless 51 is worst
                 '-shortest', # Stop encoding when the shortest stream ends
+                *(['-t', str(self.end_mark_t - self.start_video_at)] if play_markers else []),
                 '-loglevel', 'info',
                 '-hide_banner',
                 self.output_path
