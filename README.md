@@ -16,6 +16,34 @@ Full FFglitch documentation: [ffglitch.org/docs](https://ffglitch.org/docs/)
 # Installation
 Download and extract from [Releases](https://github.com/pawelzwronek/LiveMosher/releases)
 
+# Running from source
+1. Prepare virtual enviroment (Optional)
+   - once
+
+     `venv-prepare.cmd` (Windows)
+
+     `venv-prepare.sh` (Linux, Mac)
+
+   - at new terminal session
+
+     `venv-win\Scripts\activate.bat` (Windows)
+
+     `source venv-linux/bin/activate` (Linux)
+
+     `source venv-mac/bin/activate` (Mac)
+
+2. Install requirements (once)
+
+    `pip install -r requirements-win.txt` (Windows)
+
+    `pip3 install -r requirements-linux.txt` (Linux)
+
+    `pip3 install -r requirements-mac.txt` (Mac)
+
+3. Run the app
+
+    `python src/LiveMosherApp.py` or `python3 src/LiveMosherApp.py`
+
 # Build
 Minimum Python version: 3.8
 
