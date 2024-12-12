@@ -246,6 +246,21 @@ def fix_windows_network_path(path):
         path = '\\\\' + path[2:]
     return path
 
+def copy_file(src, dst, replace = False):
+    '''Copy file from src to dst. All directories in dst will be created if not exist.'''
+    try:
+        if not replace and os.path.exists(dst):
+            return False
+
+        with open(src, 'rb') as fsrc:
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            with open(dst, 'wb') as fdst:
+                fdst.write(fsrc.read())
+        return True
+    except Exception as e:
+        print(f'Error copy_file: {e}')
+    return False
+
 def parse_float(value, default = 0.0):
     try:
         return float(value)

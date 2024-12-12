@@ -20,7 +20,7 @@ from zmq_req import ZmqReq
 
 from lib.colored_print import print_error, print, print_warn # pylint: disable=redefined-builtin
 from lib.framerate import find_fraction
-from lib.misc import IS_MAC, IS_WIN, find_next_output_file, find_relative_path, fix_windows_network_path, \
+from lib.misc import IS_MAC, IS_WIN, copy_file, find_next_output_file, find_relative_path, fix_windows_network_path, \
                     normalize_path, parse_float, path_replace_not_allowed_chars, resolve_relative_path
 from lib.process import Line, Process
 
@@ -1855,20 +1855,40 @@ Have fun!
 
     def on_edit_script(self):
         if self.selected_script and self.selected_script.buildin:
-            path = normalize_path(self.selected_script.path).split('/')
             try:
-                scripts_in_path_idx = path.index(SCRIPTS_DIR)
-                path = path[scripts_in_path_idx + 1:]
-                path = os.path.join(*path)
-                path = os.path.join(EDITED_SCRIPTS_DIR, path)
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-                if not os.path.exists(path):
-                    with open(path, 'w', encoding='utf-8') as f:
-                        f.write(self.editor.get_text())
-                    print('Saved edited script:', path)
-                self.editor.close_file()
-                self.update_scripts_list()
-                self.select_script(path)
+                edited_scripts_dir = self.resolve_relative_path(EDITED_SCRIPTS_DIR)
+                def to_edited_path(path):
+                    dirs = normalize_path(path).split('/')
+                    path = os.path.join(edited_scripts_dir, *(path.split('/')[dirs.index(SCRIPTS_DIR) + 1:]))
+                    return normalize_path(os.path.abspath(path))
+                path = to_edited_path(self.selected_script.path)
+                path = find_next_output_file(path)
+                if copy_file(self.selected_script.path, path, replace=False):
+                    def find_recursive_js_imports_and_copy_them_too(file_path):
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            lines = f.readlines()
+                        for line in lines:
+                            js_lib_re = r'from\s+["\'](.+?)["\']|import\s+["\'](.+?)["\']'
+                            js_path = re.search(js_lib_re, line)
+                            if js_path:
+                                js_path = js_path.group(1) or js_path.group(2)
+                                if js_path:
+                                    js_path = os.path.join(os.path.dirname(file_path), js_path)
+                                    if not js_path.endswith('.js') and not js_path.endswith('.mjs'):
+                                        js_path += '.js'
+                                    if os.path.exists(js_path):
+                                        dst_path = to_edited_path(js_path)
+                                        if copy_file(js_path, dst_path, replace=False):
+                                            print('Copied library to:', dst_path)
+                                            find_recursive_js_imports_and_copy_them_too(js_path)
+                    print('Copied script:', path)
+                    find_recursive_js_imports_and_copy_them_too(self.selected_script.path)
+                    self.editor.close_file()
+                    self.update_scripts_list()
+                    self.select_script(path)
+                    self.on_script_select(None)
+                else:
+                    print_error(f'Error copying script to {path}')
             except ValueError:
                 pass
 
@@ -1879,7 +1899,7 @@ Have fun!
             if not self.selected_script.buildin:
                 self.editor.save()
             path = self.selected_script.path
-            os.makedirs(EDITED_SCRIPTS_DIR, exist_ok=True)
+            os.makedirs(self.resolve_relative_path(EDITED_SCRIPTS_DIR), exist_ok=True)
             with open(path, 'r', encoding='utf-8') as f:
                 new_path = find_next_output_file(path, suffix='_copy')
                 print('Cloning script:', path, 'to:', new_path)
@@ -1937,10 +1957,10 @@ Have fun!
             if not self.selected_script.buildin:
                 self.editor.save()
             path = self.selected_script.path
-                print('Deleting script:', path)
-                if os.path.exists(path):
+            print('Deleting script:', path)
+            if os.path.exists(path):
                 send2trash(os.path.abspath(path))
-                self.update_scripts_list()
+            self.update_scripts_list()
         except Exception as e:
             show_warning(f'Error deleting script: "{e}"')
             print('Error deleting script:', e)
