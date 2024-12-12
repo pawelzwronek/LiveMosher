@@ -14,6 +14,7 @@ from typing import List
 from ctypes.wintypes import HWND
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog
+from send2trash import send2trash
 from zmq import Context as zmq_Context
 from zmq_req import ZmqReq
 
@@ -1936,10 +1937,9 @@ Have fun!
             if not self.selected_script.buildin:
                 self.editor.save()
             path = self.selected_script.path
-            if messagebox.askyesno('Delete mosher', f'Delete "{os.path.basename(path)}"?'):
                 print('Deleting script:', path)
                 if os.path.exists(path):
-                    os.remove(path)
+                send2trash(os.path.abspath(path))
                 self.update_scripts_list()
         except Exception as e:
             show_warning(f'Error deleting script: "{e}"')

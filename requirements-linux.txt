@@ -1,2 +1,3 @@
 -r requirements-all.txt
 tkextrafont
+send2trash
