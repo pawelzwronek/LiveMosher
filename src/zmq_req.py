@@ -13,39 +13,50 @@ class ZmqReqMode(Enum):
     IPC = 1
     TCP = 2
 
-class ZmqReq:
-    def __init__(self, ctx: zmq.Context, name, wait_cb = None, mode = ZmqReqMode.IPC):
+class ZmqReqPush:
+    def __init__(self, ctx: zmq.Context, name, wait_cb = None, mode = ZmqReqMode.IPC, port_file = None, is_push = False):
         self.name = name
         self.context = ctx
         self.wait_cb = wait_cb
         self.mode = mode
+        self.ipc_port_file = port_file
+        self.is_push = is_push
 
         if not self.test_loopback_ipc():
             print_warn('IPC is not supported, fallback to TCP')
             self.mode = ZmqReqMode.TCP
 
+        self.socket: zmq.Socket = None
+        self.connected = False
+        self.soft_timeout = 500 / 1000
+
+    def generate_urls(self):
         protocol = 'tcp' if self.mode == ZmqReqMode.TCP else 'ipc'
+
         if self.mode == ZmqReqMode.IPC:
-            with tempfile.NamedTemporaryFile(mode='w', delete=False, prefix=f'{name}_', suffix='.ipc') as file:
-                self.ipc_file_path = normalize_path(file.name)
-                file.write('')
+            self.ipc_file_path = self.ipc_port_file
+            if not self.ipc_file_path:
+                with tempfile.NamedTemporaryFile(mode='w', delete=False, prefix=f'{self.name}_', suffix='.ipc') as file:
+                    self.ipc_file_path = normalize_path(file.name)
+                    file.write('')
+            else:
+                self.ipc_file_path = normalize_path(self.ipc_file_path)
+                with open(self.ipc_file_path, 'w', encoding='utf-8') as file:
+                    file.write('')
             self.bind_url = f'{protocol}://{self.ipc_file_path}'
             self.connect_url = self.bind_url
             self.url_basename = os.path.basename(self.ipc_file_path)
         elif self.mode == ZmqReqMode.TCP:
-            port = 0
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind(('', 0))
-                port = s.getsockname()[1]
+            port = self.ipc_port_file or 0
+            if not port:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(('', 0))
+                    port = s.getsockname()[1]
             self.bind_url = f'{protocol}://*:{port}'
             self.connect_url = f'{protocol}://localhost:{port}'
             self.url_basename = self.connect_url
         else:
             raise ValueError(f'Invalid mode: {self.mode}')
-
-        self.socket: zmq.Socket = None
-        self.connected = False
-        self.soft_timeout = 500 / 1000
 
     def connect(self):
         self.reconnect()
@@ -56,7 +67,7 @@ class ZmqReq:
         except zmq.error.ZMQError as e:
             print_warn(f'Error on closing socket: {e}')
         try:
-            self.socket = self.context.socket(zmq.REQ)
+            self.socket = self.context.socket(zmq.REQ if not self.is_push else zmq.PUSH)
             self.socket.connect(self.connect_url)
             self.socket.setsockopt(zmq.RCVTIMEO, 50)
             self.socket.setsockopt(zmq.RECONNECT_IVL, 20)
@@ -88,6 +99,9 @@ class ZmqReq:
             raise ConnectionError(f'Not connected to {self.url_basename}')
         try:
             self.socket.send_string(text)
+            if self.is_push:
+                return None, None
+
             t = time.time()
             start_t = t
             end_t = t + self.soft_timeout

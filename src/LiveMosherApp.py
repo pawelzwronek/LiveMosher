@@ -16,7 +16,6 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog
 from send2trash import send2trash
 from zmq import Context as zmq_Context
-from zmq_req import ZmqReq
 
 from lib.colored_print import print_error, print, print_warn # pylint: disable=redefined-builtin
 from lib.framerate import find_fraction
@@ -24,8 +23,10 @@ from lib.misc import IS_MAC, IS_WIN, copy_file, find_next_output_file, find_rela
                     normalize_path, parse_float, path_replace_not_allowed_chars, resolve_relative_path
 from lib.process import Line, Process
 
-from script import Script
 from LiveMosher1_support import LiveMosherGui, start_up
+from midi_piano import MidiPiano
+from script import Script
+from zmq_req import ZmqReqPush, ZmqReqMode
 
 
 #pylint: disable=global-statement
@@ -95,9 +96,13 @@ class LiveMosherApp(LiveMosherGui):
         self.all_scripts: List[Script] = []
         self.listbox_scripts: List[Script] = []
 
-        self.context = zmq_Context()
-        self.fflive_zmq = ZmqReq(ctx=self.context, name='fflive', wait_cb=self.gui_event_loop)
-        self.fflive_a_zmq = ZmqReq(ctx=self.context, name='fflive_audio', wait_cb=self.gui_event_loop)
+        self.zmq_context = zmq_Context()
+        self.zmq_context_midi = zmq_Context()
+        self.fflive_zmq = ZmqReqPush(ctx=self.zmq_context, name='fflive', wait_cb=self.gui_event_loop)
+        self.fflive_a_zmq = ZmqReqPush(ctx=self.zmq_context, name='fflive_audio', wait_cb=self.gui_event_loop)
+        self.fflive_zmq.generate_urls()
+        self.fflive_a_zmq.generate_urls()
+        self.midi_zmq = ZmqReqPush(ctx=self.zmq_context_midi, name='midi_emu', mode=ZmqReqMode.TCP, is_push=True)
 
         self.w.button_clone.configure(command=self.on_clone_script)
         self.w.button_edit_script.configure(command=self.on_edit_script)
@@ -220,6 +225,7 @@ Have fun!
 '''
         self.editor_empty_text_color = '#666'
 
+        self.piano: MidiPiano = None
 
 
     @property
@@ -313,6 +319,7 @@ Have fun!
             self.kill_ffplay_processes()
             self.fflive_zmq.close()
             self.fflive_a_zmq.close()
+            self.midi_zmq.close()
 
             super().on_exit(_event)
         except Exception as e:
@@ -322,7 +329,7 @@ Have fun!
                 super().on_exit(_event)
 
 
-    def get_video_win_pos_size(self, req: ZmqReq):
+    def get_video_win_pos_size(self, req: ZmqReqPush):
         try:
             if req.connected:
                 msg = req.req_msg('window_pos_size')
@@ -332,7 +339,7 @@ Have fun!
             print('Error get_video_win_pos_size:', e)
         return None, None, None, None
 
-    def get_video_win_maximized(self, req: ZmqReq):
+    def get_video_win_maximized(self, req: ZmqReqPush):
         try:
             if req.connected:
                 msg = req.req_msg('window_maximized')
@@ -744,7 +751,7 @@ Have fun!
                 self.w.listbox_scripts.selection_set(idx)
         self.w.listbox_scripts.yview_moveto(current_y_pos)
 
-    def ping_window(self, req: ZmqReq):
+    def ping_window(self, req: ZmqReqPush):
         return req.connected and bool(req.req_msg('volume'))
 
     check_ffplay_process_timer = None
@@ -1080,14 +1087,32 @@ Have fun!
                 elif '[quickjs' in line:
                     line = self.remove_hex_address(line)
                     idx = line.find(']')
-                    if not line[idx + 1:].strip():
+                    msg = line[idx + 1:].strip()
+                    if not msg:
                         continue
+
+                    if 'No MIDI ports. Falling back to ZMQ midi eumulation on:' in msg:
+                        self.midi_zmq.connect_url = msg.split(' ')[-1].strip()
+                        if self.midi_zmq.connect_url:
+                            self.midi_zmq.connect()
+                            if self.midi_zmq.connected:
+                                self.show_midi_piano()
+
                 if line:
                     process_line.line = line
                     lines1.append(process_line)
 
         for line in lines1:
             self.console_log(line.line, timestamp=line.timestamp)
+
+    def show_midi_piano(self, show=True, in_ms=0):
+        if show and (self.piano is None or self.piano.is_destroyed()):
+            top = tk.Toplevel(self.root)
+            self.piano = MidiPiano(top, bg_color=self.top_background)
+            self.piano.set_on_message_cb(lambda msg: self.midi_zmq.req_msg(str(msg)) if self.midi_zmq.connected else None)
+
+        if self.piano:
+            self.piano.show(show, in_ms)
 
     def remove_hex_address(self, line):
         line = re.sub(r' ?@ ?(0x)?[0-9a-fA-F]{8,}', '', line) # [libx264 @ 000001a44c6d0840] => [libx264]
@@ -1609,7 +1634,7 @@ Have fun!
     def test_window_borders_size(self):
         window_title = f'{NAME} Test window'
         start_pos = 200, 200
-        fflive_zmq = ZmqReq(ctx=self.context, name='fflive_test')
+        fflive_zmq = ZmqReqPush(ctx=self.zmq_context, name='fflive_test')
         fflive_command = [
             self.get_bin('fflive'),
             '-f', 'lavfi', '-i', 'nullsrc=s=300x10',
@@ -1665,6 +1690,7 @@ Have fun!
 
     def kill_ffplay_processes(self, force=False, from_check_timer=False):
         try:
+            self.show_midi_piano(False, 500)
             if not from_check_timer:
                 self.stop_check_timer()
 

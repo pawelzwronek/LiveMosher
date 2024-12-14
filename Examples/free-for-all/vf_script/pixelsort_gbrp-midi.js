@@ -1,4 +1,4 @@
-import { MIDIInput } from "../midi.js";
+import { MIDIInput } from "../../midi.js";
 
 import {
   scaleValue
@@ -22,36 +22,36 @@ export function setup(args)
   midiin.setup();
   // midiin.setlog(true);
   /* faders */
-  midiin.onevent ( 0, function(v) { midi_range_y[0] = v; });
-  midiin.onevent ( 1, function(v) { midi_range_y[1] = v; });
-  midiin.onevent ( 2, function(v) { midi_range_x[0] = v; });
-  midiin.onevent ( 3, function(v) { midi_range_x[1] = v; });
-  midiin.onevent ( 4, function(v) { midi_mode = 0; midi_threshold_low = v; });
-  midiin.onevent ( 5, function(v) { midi_mode = 0; midi_threshold_high = v; });
-  midiin.onevent ( 6, function(v) { midi_mode = 1; midi_clength = v; });
+  midiin.onevent ( 0, event => { midi_range_y[0] = event.velocity; });
+  midiin.onevent ( 1, event => { midi_range_y[1] = event.velocity; });
+  midiin.onevent ( 2, event => { midi_range_x[0] = event.velocity; });
+  midiin.onevent ( 3, event => { midi_range_x[1] = event.velocity; });
+  midiin.onevent ( 4, event => { midi_mode = 0; midi_threshold_low = event.velocity; });
+  midiin.onevent ( 5, event => { midi_mode = 0; midi_threshold_high = event.velocity; });
+  midiin.onevent ( 6, event => { midi_mode = 1; midi_clength = event.velocity; });
   /* buttons */
   // set vertical
-  midiin.onbutton(32, function(v) { if ( v ) midi_order = 0; });
-  midiin.onbutton(48, function(v) { if ( v ) midi_order = 0; });
-  midiin.onbutton(64, function(v) { if ( v ) midi_order = 0; });
-  midiin.onbutton(33, function(v) { if ( v ) midi_order = 0; });
-  midiin.onbutton(49, function(v) { if ( v ) midi_order = 0; });
-  midiin.onbutton(65, function(v) { if ( v ) midi_order = 0; });
+  midiin.onbutton(32, pressed => { if (pressed) midi_order = 0; });
+  midiin.onbutton(48, pressed => { if (pressed) midi_order = 0; });
+  midiin.onbutton(64, pressed => { if (pressed) midi_order = 0; });
+  midiin.onbutton(33, pressed => { if (pressed) midi_order = 0; });
+  midiin.onbutton(49, pressed => { if (pressed) midi_order = 0; });
+  midiin.onbutton(65, pressed => { if (pressed) midi_order = 0; });
   // set horizontal
-  midiin.onbutton(34, function(v) { if ( v ) midi_order = 1; });
-  midiin.onbutton(50, function(v) { if ( v ) midi_order = 1; });
-  midiin.onbutton(66, function(v) { if ( v ) midi_order = 1; });
-  midiin.onbutton(35, function(v) { if ( v ) midi_order = 1; });
-  midiin.onbutton(51, function(v) { if ( v ) midi_order = 1; });
-  midiin.onbutton(67, function(v) { if ( v ) midi_order = 1; });
+  midiin.onbutton(34, pressed => { if (pressed) midi_order = 1; });
+  midiin.onbutton(50, pressed => { if (pressed) midi_order = 1; });
+  midiin.onbutton(66, pressed => { if (pressed) midi_order = 1; });
+  midiin.onbutton(35, pressed => { if (pressed) midi_order = 1; });
+  midiin.onbutton(51, pressed => { if (pressed) midi_order = 1; });
+  midiin.onbutton(67, pressed => { if (pressed) midi_order = 1; });
   // trigger_by
-  midiin.onbutton(36, function(v) { if ( v ) midi_trigger_by = 0; });
-  midiin.onbutton(52, function(v) { if ( v ) midi_trigger_by = 1; });
-  midiin.onbutton(68, function(v) { if ( v ) midi_trigger_by = 2; });
+  midiin.onbutton(36, pressed => { if (pressed) midi_trigger_by = 0; });
+  midiin.onbutton(52, pressed => { if (pressed) midi_trigger_by = 1; });
+  midiin.onbutton(68, pressed => { if (pressed) midi_trigger_by = 2; });
   // sort_by
-  midiin.onbutton(37, function(v) { if ( v ) midi_sort_by = 0; });
-  midiin.onbutton(53, function(v) { if ( v ) midi_sort_by = 1; });
-  midiin.onbutton(69, function(v) { if ( v ) midi_sort_by = 2; });
+  midiin.onbutton(37, pressed => { if (pressed) midi_sort_by = 0; });
+  midiin.onbutton(53, pressed => { if (pressed) midi_sort_by = 1; });
+  midiin.onbutton(69, pressed => { if (pressed) midi_sort_by = 2; });
 }
 
 let first_frame = true;

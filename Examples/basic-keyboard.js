@@ -28,12 +28,15 @@ export function glitch_frame(frame, stream)
                 case Code.LEFT: // left arrow
                     cur_pan_mv[0] -= 5; // subtract 5 from x component of motion vector
                     break;
+
                 case Code.RIGHT: // right arrow
                     cur_pan_mv[0] += 5; // add 5 to x component of motion vector
                     break;
+
                 case Code.UP: // up arrow
                     cur_pan_mv[1] -= 5; // subtract 5 from y component of motion vector
                     break;
+
                 case Code.DOWN: // down arrow
                     cur_pan_mv[1] += 5; // add 5 to y component of motion vector
                     break;

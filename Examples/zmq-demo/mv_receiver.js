@@ -1,16 +1,17 @@
+import * as zmq from "zmq";
+
 import {
   get_forward_mvs,
 } from "../free-for-all/helpers.mjs";
 
-let zmq;
 let zreq;
 
 export function setup(args)
 {
   args.features = [ "mv" ];
 
-  zmq = new ZMQ();
-  zreq = zmq.socket(ZMQ.ZMQ_REQ);
+  const ctx = new zmq.Context();
+  zreq = ctx.socket(zmq.REQ);
   zreq.connect("tcp://localhost:5556");
 }
 
@@ -25,16 +26,14 @@ export function glitch_frame(frame, stream)
   if ( !request_sent )
   {
     const data = new Uint8FFArray(1); // the content doesn't matter
-    zreq.send(data, ZMQ.ZMQ_DONTWAIT);
+    zreq.send(data, zmq.DONTWAIT);
     request_sent = true;
   }
 
-  {
-    const data = zreq.recv(zreq, ZMQ.ZMQ_DONTWAIT);
-    if ( true ) {
-      console.log(`received ${data.length} bytes`);
-      fwd_mvs.assign(new MV2DArray(data));
-      request_sent = false;
-    }
+  const data = zreq.recv(zreq, zmq.DONTWAIT);
+  if ( data ) {
+    console.log(`received ${data.length} bytes`);
+    fwd_mvs.assign(new MV2DArray(data));
+    request_sent = false;
   }
 }

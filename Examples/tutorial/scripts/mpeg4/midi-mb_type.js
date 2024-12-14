@@ -1,4 +1,4 @@
-import { MIDIInput } from "../helpers/midi.js";
+import { MIDIInput } from "../../../midi.js";
 
 /*********************************************************************/
 const midiin = new MIDIInput();
@@ -116,9 +116,9 @@ export function setup()
   // NOTE: uncomment the following line to print the values from the MIDI events
   // midiin.setlog(true);
   /* faders */
-  midiin.onevent ( 0, function(v) { midi_val = v + 1; });
+  midiin.onevent ( 0, event => { midi_val = event.velocity + 1; });
   /* buttons */
-  midiin.onbutton(32, function(v) { if ( v ) nb_frames = midi_val; });
+  midiin.onbutton(32, pressed => { if (pressed) nb_frames = midi_val; });
 }
 
 export function mb_type_func(args)

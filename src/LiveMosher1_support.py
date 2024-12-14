@@ -30,6 +30,8 @@ class LiveMosherGui:
         self.root.iconphoto(True, PhotoImage(file=self.get_asset_path('gui/icons/icon.png')))
         self.title = title
 
+        self.top_background = '#e6e6e6'
+
         if HIDE_TOOLBAR:
             self.root.attributes('-alpha', 0.0)
             self.root.lower()
@@ -73,18 +75,17 @@ class LiveMosherGui:
             button.configure(style=button_style1)
 
         # Change background color of top frame
-        top_background = self.w.top.cget('background')
-        top_background = '#e6e6e6'
-        self.w.top.configure(background=top_background)
+        # self.top_background = self.w.top.cget('background')
+        self.w.top.configure(background=self.top_background)
 
         # Change color on hover to transparent
         checkbox_style = 'TCheckbutton'
-        style.configure(checkbox_style, background=top_background)
+        style.configure(checkbox_style, background=self.top_background)
         style.map(checkbox_style, background=[('active', style.lookup('TCheckbutton', 'background'))])
         style.configure(checkbox_style, font=(font_family, font_size - (1 if not IS_WIN else 0)))
 
         scale_style = 'TScale'
-        style.configure(scale_style, troughcolor=top_background)
+        style.configure(scale_style, troughcolor=self.top_background)
 
         self.w.listbox_scripts.configure(background=DEFAULTSTYLE.background_color)
         self.w.listbox_scripts.configure(font=(font_family, 10 if not IS_MAC else 12))
@@ -105,9 +106,9 @@ class LiveMosherGui:
                 if isinstance(child, ttk.Checkbutton):
                     child.configure(takefocus=False)
                 if isinstance(child, tk.Label):
-                    child.config(background=top_background)
+                    child.config(background=self.top_background)
                 if isinstance(child, tk.LabelFrame):
-                    child.config(background=top_background)
+                    child.config(background=self.top_background)
                 # Fix TScale position offset
                 if isinstance(child, ttk.Scale):
                     x = int(child.place_info()['x'])

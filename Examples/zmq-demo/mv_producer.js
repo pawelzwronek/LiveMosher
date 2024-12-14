@@ -1,16 +1,17 @@
+import * as zmq from "zmq";
+
 import {
   get_forward_mvs,
 } from "../free-for-all/helpers.mjs";
 
-let zmq;
 let zpush;
 
 export function setup(args)
 {
   args.features = [ "mv" ];
 
-  zmq = new ZMQ();
-  zpush = zmq.socket(ZMQ.ZMQ_PUSH);
+  const ctx = new zmq.Context();
+  zpush = ctx.socket(zmq.PUSH);
   zpush.connect("tcp://localhost:5555");
 
   // (new ZMQ()).socket(ZMQ.ZMQ_PUSH);
@@ -24,5 +25,5 @@ export function glitch_frame(frame, stream)
     return;
 
   const data = fwd_mvs.serialize();
-  zpush.send(data, ZMQ.ZMQ_DONTWAIT);
+  zpush.send(data, zmq.DONTWAIT);
 }

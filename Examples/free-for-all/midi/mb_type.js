@@ -1,9 +1,9 @@
-import { MIDIInput } from "./midi.js";
+import { MIDIInput } from "../../midi.js";
 
 import {
   get_forward_mvs,
   scaleValue,
-} from "./helpers.mjs";
+} from "../helpers.mjs";
 
 const midiin = new MIDIInput();
 let midi_range_y = [ 0, 0 ];
@@ -19,10 +19,10 @@ export function setup()
   midiin.setup();
   // midiin.setlog(true);
   /* faders */
-  midiin.onevent ( 4, function(v) { midi_range_y[0] = v; });
-  midiin.onevent ( 5, function(v) { midi_range_y[1] = v; });
-  midiin.onevent ( 6, function(v) { midi_range_x[0] = v; });
-  midiin.onevent ( 7, function(v) { midi_range_x[1] = v; });
+  midiin.onevent(4, event => { midi_range_y[0] = event.velocity; });
+  midiin.onevent(5, event => { midi_range_y[1] = event.velocity; });
+  midiin.onevent(6, event => { midi_range_x[0] = event.velocity; });
+  midiin.onevent(7, event => { midi_range_x[1] = event.velocity; });
 }
 
 export function mb_type_func(args)

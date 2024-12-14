@@ -1,4 +1,4 @@
-import { MIDIInput } from "./midi.js";
+import { MIDIInput } from "../midi.js";
 
 import {
   get_forward_mvs,
@@ -20,7 +20,7 @@ export function setup(args)
   midiin.setup();
   // midiin.setlog(true);
   /* faders */
-  midiin.onevent ( 4, function(v) { tail_length = v; });
+  midiin.onevent(4, event => { tail_length = event.velocity; });
 }
 
 export function glitch_frame(frame, stream)

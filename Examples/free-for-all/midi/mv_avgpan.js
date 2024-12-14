@@ -1,11 +1,11 @@
 // Combination of mv_average and mv_pan
 // with a toggle to switch between different glitch_frame() functions
-import { MIDIInput } from "./midi_v2.js";
+import { MIDIInput } from "../../midi.js";
 
 import {
   get_forward_mvs,
   scaleValue,
-} from "./helpers.mjs";
+} from "../helpers.mjs";
 
 
 /*********************************************************************/
@@ -31,42 +31,42 @@ export function setup(args)
   args.features = [ "mv" ];
 
   midiin.setup();
-  midiin.setlog(true);
+  midiin.setlog(false);
   /* faders */
   // Set up the event handlers for faders
-midiin.onevent ( 5, function(v) { tail_length     = v.velocity; });
-midiin.onevent ( 0, function(v) { midi_range_y[0] = v.velocity; });
-midiin.onevent ( 1, function(v) { midi_range_y[1] = v.velocity; });
-midiin.onevent ( 2, function(v) { midi_range_x[0] = v.velocity; });
-midiin.onevent ( 3, function(v) { midi_range_x[1] = v.velocity; });
-midiin.onbutton( 65, function(pressed) { freeze_offset = (pressed); });
+  midiin.onevent ( 5, event => { tail_length     = event.velocity; });
+  midiin.onevent ( 0, event => { midi_range_y[0] = event.velocity; });
+  midiin.onevent ( 1, event => { midi_range_y[1] = event.velocity; });
+  midiin.onevent ( 2, event => { midi_range_x[0] = event.velocity; });
+  midiin.onevent ( 3, event => { midi_range_x[1] = event.velocity; });
+  midiin.onbutton( 65, pressed => { freeze_offset = (pressed); });
 
 
-/*********************************************************************/
-// Hotkeys to trigger switching between glitch_frame() functions
-/*********************************************************************/
+  /*********************************************************************/
+  // Hotkeys to trigger switching between glitch_frame() functions
+  /*********************************************************************/
 
-// Switch glitch_frame when pressed down, change back when released
-midiin.onbutton(62, function(pressed) {
-  // pressed is a boolean indicating whether the note is pressed or released
-  activeGlitchFunction = (activeGlitchFunction == glitchFunctions[0]) ? glitchFunctions[1] : glitchFunctions[0];
-  console.log('Changed glitch_frame function to: ' + activeGlitchFunction);
-});
+  // Switch glitch_frame when pressed down, change back when released
+  midiin.onbutton(62, function(pressed) {
+    // pressed is a boolean indicating whether the note is pressed or released
+    activeGlitchFunction = (activeGlitchFunction == glitchFunctions[0]) ? glitchFunctions[1] : glitchFunctions[0];
+    console.log('Changed glitch_frame function to: ' + activeGlitchFunction);
+  });
+
+  // Switch between all glitch_frame() functions in the glitchFunctions array
+  midiin.onbutton(64, function(pressed) {
+    if (pressed) {
+      // Only toggle when the button is pressed down, not when it is released
+      currentFunctionIndex = (currentFunctionIndex + 1) % glitchFunctions.length;
+
+      // Call the current glitch function
+      activeGlitchFunction = glitchFunctions[currentFunctionIndex];
+
+      // Output the name of the current function to the console
+      console.log('Switched glitch_frame function to: ' + activeGlitchFunction);
+    }
+  });
 }
-
-// Switch between all glitch_frame() functions in the glitchFunctions array
-midiin.onbutton(64, function(pressed) {
-  if (pressed) { 
-    // Only toggle when the button is pressed down, not when it is released
-    currentFunctionIndex = (currentFunctionIndex + 1) % glitchFunctions.length;
-
-    // Call the current glitch function
-    activeGlitchFunction = glitchFunctions[currentFunctionIndex];
-
-    // Output the name of the current function to the console
-    console.log('Switched glitch_frame function to: ' + activeGlitchFunction);
-  }
-});
 
 
 /*********************************************************************/
@@ -92,7 +92,7 @@ export function mv_pan(frame, stream)
 	  let mv_off = MV(y_end - y_begin, x_end - x_begin);
       fwd_mvs.add(mv_off);
   }
-  
+
   // Freeze current offset if val is true
   else if (freeze_offset === true) {
 	  let mv_off = new MV(0,0)
@@ -207,7 +207,7 @@ export function mv_avgpan(frame, stream)
 export function glitch_frame(frame, stream) {
 
    midiin.parse_events();
-  
+
   // Use eval to call the function by its name
   eval(activeGlitchFunction + '(frame, stream)');
 }

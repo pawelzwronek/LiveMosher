@@ -1,4 +1,4 @@
-import { MIDIInput } from "../helpers/midi.js";
+import { MIDIInput } from "../../../midi.js";
 
 /*********************************************************************/
 const midiin = new MIDIInput();
@@ -13,10 +13,10 @@ export function setup(args)
   midiin.setup();
   // midiin.setlog(true);
   /* faders */
-  midiin.onevent ( 4, function(v) { midi_range_y[0] = v; });
-  midiin.onevent ( 5, function(v) { midi_range_y[1] = v; });
-  midiin.onevent ( 6, function(v) { midi_range_x[0] = v; });
-  midiin.onevent ( 7, function(v) { midi_range_x[1] = v; });
+  midiin.onevent ( 4, event => { midi_range_y[0] = event.velocity; });
+  midiin.onevent ( 5, event => { midi_range_y[1] = event.velocity; });
+  midiin.onevent ( 6, event => { midi_range_x[0] = event.velocity; });
+  midiin.onevent ( 7, event => { midi_range_x[1] = event.velocity; });
 }
 
 export function glitch_frame(frame, stream)
