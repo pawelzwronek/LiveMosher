@@ -1,6 +1,6 @@
 
 let options = {
-  pix_fmt: "hsl",
+  colorspace: "hsl",
   trigger_by: "l",
   sort_by: "l",
   order: "horizontal",

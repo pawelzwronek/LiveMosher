@@ -2,6 +2,8 @@ import * as rtmidi from 'rtmidi';
 import * as zmq from "zmq";
 
 export class MIDIInput {
+    keys = [];
+
     constructor() {
         this.midiin = new rtmidi.In(rtmidi.WINDOWS_MM, 'RtMidi Input Client', 1024);
         this.midiout = new rtmidi.Out();
@@ -14,6 +16,15 @@ export class MIDIInput {
         this.buttons = {};
 
         this.log = false;
+
+        const octaves = [0, 7];
+        const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        for (let octave = octaves[0]; octave <= octaves[1]; octave++) {
+            for (let key = 0; key < 12; key++) {
+                this.keys.push(notes[key] + octave);
+            }
+        }
+
     }
 
     setup(arg) {
@@ -108,14 +119,28 @@ export class MIDIInput {
         this.log = b;
     }
 
+    midi_note_to_key(note = 0) {
+        if (note < 10) return 'Fader ' + note;
+
+        const C0 = 12;
+        if (note >= C0 && note < C0 + this.keys.length)
+            return this.keys[note - C0];
+        else
+            return 'C?';
+    }
+
+    _pad_end(str, len, pad) {
+        return str + pad.repeat(Math.max(0, len - str.length));
+    }
+
     onevent(v, func) {
         this.events[v] = func;
-        console.log('Registered event for note: ' + v);
+        console.log('Registered event for note: ' + this._pad_end(this.midi_note_to_key(v), 3, ' ') + ' (' + v + ')');
     }
 
     onbutton(v, func) {
         this.buttons[v] = func;
-        console.log('Registered button for note: ' + v);
+        console.log('Registered button for note: ' + this._pad_end(this.midi_note_to_key(v), 3, ' ') + ' (' + v + ')');
     }
 
     parse_events() {

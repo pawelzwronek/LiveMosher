@@ -483,6 +483,11 @@ Right-click for more options
         self.filepath = filepath
         self.read_only = read_only
         self.highlight_syntax()
+        if self.read_only:
+            self.text_widget.config(cursor='arrow')
+        else:
+            self.text_widget.config(cursor='xterm')
+            self.text_widget.focus_set()
 
     def close_file(self):
         if self.save_timer:

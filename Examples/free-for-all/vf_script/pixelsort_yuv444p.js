@@ -1,6 +1,6 @@
 
-let options = {
-  pix_fmt: "yuv",
+const options = {
+  colorspace: "yuv",
   trigger_by: "y",
   sort_by: "y",
   order: "vertical",
@@ -16,7 +16,7 @@ export function setup(args)
 
 export function filter(args)
 {
-  let data = args["data"];
+  const data = args["data"];
   const height = data[0].height;
   const width  = data[0].width;
 

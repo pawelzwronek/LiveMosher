@@ -10,5 +10,6 @@ class Script:
         self.path = path
         self.parameters = parameters
         self.type = Script.Type.MAIN
+        self.is_filter = False  # -vf script="script.js"
         self.is_in_project = False
         self.buildin = buildin

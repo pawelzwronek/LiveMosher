@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import Canvas, Scale, VERTICAL
 import math
 
-OCTAVES = [3, 4, 5]
+OCTAVES = [1, 2, 3, 4]
 
 MIDI_NOTES = { 'C1': 24, 'C2': 36, 'C3': 48, 'C4': 60, 'C5': 72, 'C6': 84, }
 

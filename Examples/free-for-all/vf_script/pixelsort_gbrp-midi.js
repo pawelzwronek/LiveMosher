@@ -57,7 +57,7 @@ export function setup(args)
 let first_frame = true;
 export function filter(args)
 {
-  let data = args["data"];
+  const data = args["data"];
   const height = data[0].height;
   const width  = data[0].width;
 
@@ -73,8 +73,8 @@ export function filter(args)
     first_frame = false;
   }
 
-  let options = {
-    pix_fmt: "hsl",             // rgb, hsv, hsl
+  const options = {
+    colorspace: "hsl",             // rgb, hsv, hsl
     trigger_by: "l",
     sort_by: "l",
     order: "horizontal",
@@ -135,8 +135,8 @@ export function filter(args)
     // update options
     options.reverse_sort = reverse_sort;
     options.threshold = [ threshold_low, threshold_high ];
-    options.trigger_by = options.pix_fmt[midi_trigger_by];
-    options.sort_by = options.pix_fmt[midi_sort_by];
+    options.trigger_by = options.colorspace[midi_trigger_by];
+    options.sort_by = options.colorspace[midi_sort_by];
 
     const range_y = [ y_begin, y_end ];
     const range_x = [ x_begin, x_end ];

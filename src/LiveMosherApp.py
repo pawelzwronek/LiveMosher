@@ -24,7 +24,7 @@ from lib.misc import IS_MAC, IS_WIN, copy_file, find_next_output_file, find_rela
 from lib.process import Line, Process
 
 from LiveMosher1_support import LiveMosherGui, start_up
-from midi_piano import MidiPiano
+from widget.midi_piano import MidiPiano
 from script import Script
 from zmq_req import ZmqReqPush, ZmqReqMode
 
@@ -155,7 +155,6 @@ class LiveMosherApp(LiveMosherGui):
         self.w.scrolledText_console.delete(1.0, tk.END)
 
         self.selected_script: Script = None
-        self.selected_script_path = ''
         self.selected_script_idx = -1
 
         self.ffgac_process: Process = None
@@ -629,11 +628,10 @@ Have fun!
         if script:
             self.w.listbox_scripts.selection_set(self.listbox_scripts.index(script))
             self.selected_script = script
-            self.selected_script_path = self.selected_script.path
 
-            self.editor.open_file(self.selected_script_path, read_only=script.buildin)
+            self.editor.open_file(self.selected_script.path, read_only=script.buildin)
 
-            project_script = self.get_script_from_list(self.project_scripts, self.selected_script_path)
+            project_script = self.get_script_from_list(self.project_scripts, self.selected_script.path)
             if project_script:
                 self.w.entry_script_parameters.delete(0, tk.END)
                 self.w.entry_script_parameters.insert(tk.END, project_script.parameters)
@@ -644,7 +642,6 @@ Have fun!
             self.after(1, self.show_hide, self.w.button_edit_script, self.selected_script.buildin)
         else:
             self.selected_script = None
-            self.selected_script_path = ''
             self.w.entry_script_parameters.delete(0, tk.END)
             self.editor.open_file('', read_only=False)
             self.editor.set_text(self.editor_empty_text, self.editor_empty_text_color)
@@ -674,13 +671,13 @@ Have fun!
                 return script
 
     def update_script_parameters(self):
-        if self.selected_script_path:
-            script = self.get_script_from_list(self.project_scripts, self.selected_script_path)
+        if self.selected_script and self.selected_script.path:
+            script = self.get_script_from_list(self.project_scripts, self.selected_script.path)
             parameters = self.w.entry_script_parameters.get()
             if script:
                 script.parameters = parameters
             elif parameters:
-                self.project_scripts.append(Script(self.selected_script_path, parameters))
+                self.project_scripts.append(Script(self.selected_script.path, parameters))
 
     def restart_ffplay(self, start_at_sec=0.0):
         self.start_ffplay(start_at_sec=start_at_sec)
@@ -722,8 +719,10 @@ Have fun!
                         self.listbox_scripts.append(script)
                         with open(full_path, 'r', encoding='utf-8') as f:
                             source = f.read()
-                            is_main = 'setup(' in source and 'glitch_frame(' in source
+                            is_main = re.search(r'export +function +(glitch_frame|filter) *\(', source)
                             script.type = Script.Type.MAIN if is_main else Script.Type.HELPER
+                            script.is_filter = is_main and is_main.group(1) == 'filter'
+
 
         traverse_dir(self.resolve_relative_path(EDITED_SCRIPTS_DIR), is_edited_scripts=True)
         # Separator
@@ -777,8 +776,13 @@ Have fun!
                     self.kill_ffplay_processes(from_check_timer=True)
                     self.update_play_text()
                 else:
-                    end_mark_frame = self.timeToframe(self.end_mark_t)
-                    if self.is_playing and not self.ffgac_process and (time.time() - self.last_progres_update_t) > .1 and self.current_frame >= (end_mark_frame - 5):
+                    play_markers = self.start_mark_t <= self.start_video_at <= self.end_mark_t
+                    end_mark_frame = self.timeToframe(self.end_mark_t) if play_markers else self.input_frames_count
+                    if self.is_playing and\
+                            not self.ffgac_process and\
+                            (time.time() - self.last_progres_update_t) > .1 and\
+                            end_mark_frame is not None and\
+                            self.current_frame >= (end_mark_frame - 5):
                         print('No progress update for 0.1s. End of video detected.')
                         if not self.is_recording and not self.is_paused:
                             restart_ffplay = True
@@ -1016,6 +1020,8 @@ Have fun!
         self.set_progress_widget(current_frame)
 
     def timeToframe(self, timeS):
+        if self.input_fps is None:
+            return None
         return round(timeS * self.input_fps)
 
     def frameToTime(self, frame):
@@ -1099,6 +1105,14 @@ Have fun!
                                 self.show_midi_piano()
 
                 if line:
+                    # When vf_script is used, ffgac is not running
+                    # Process duration from fflive
+                    if not self.ffgac_process:
+                        self.ffgac_lines = []
+                        self.on_ffgac_console([process_line])
+                        if len(self.ffgac_lines) == 0:
+                            continue
+
                     process_line.line = line
                     lines1.append(process_line)
 
@@ -1305,10 +1319,10 @@ Have fun!
     def get_bin(self, bin_name):
         platform = 'win' if IS_WIN else 'mac' if IS_MAC else 'linux'
         bin_dir = f'bin/ffglitch/{platform}' if not self.is_app_packed else f'{self.this_dir}/ffglitch'
-        return os.path.join(bin_dir, bin_name + ('.exe' if IS_WIN else ''))
+        return normalize_path(os.path.join(bin_dir, bin_name + ('.exe' if IS_WIN else '')))
 
 
-    def start_ffplay(self, script_path=None, start_at_sec=None, recording=False, start_paused=False):
+    def start_ffplay(self, start_at_sec=None, recording=False, start_paused=False):
         if not self.video_path:
             show_info('Please select a video file')
             return
@@ -1320,6 +1334,9 @@ Have fun!
 
         if self.starting_ffplay:
             print_warn('Already starting ffplay')
+            return
+
+        if self.selected_script and self.selected_script.type == Script.Type.HELPER:
             return
 
         if start_at_sec is None:
@@ -1422,17 +1439,30 @@ Have fun!
                 '-window_title', f"{window_title}",
                 '-hide_banner',
                 '-flush_packets', '0',
-                '-print_frameno',
                 '-sync', 'audio', # avoid frame dropping on slow frame processing
 
                 # Custom settings
-                '-blockffplaykeys',
-                '-frame_counter_off', str(start_frame),
-                '-noframedropearly',
-                '-zmq_url', self.fflive_zmq.bind_url,
+                '-print_frameno', # Print frame number to console
+                '-blockffplaykeys', # Block all ffplay original hotkeys
+                '-frame_counter_off', str(start_frame), # ffglitch script frame counter offset
+                '-noframedropearly', # Don't drop frames when cpu is too slow
+                '-zmq_url', self.fflive_zmq.bind_url, # ZMQ bind url for REQ/REP connection
                 # '-vf', 'showinfo',
                 # '-fflags', 'nobuffer', '-avioflags', 'direct',
             ]
+
+            def replace_param(cmd, param, new_value):
+                idx = cmd.index(param)
+                if new_value:
+                    cmd[idx + 1] = str(new_value)
+                else:
+                    cmd.pop(idx)
+                    cmd.pop(idx)
+
+            if self.selected_script and self.selected_script.is_filter:
+                replace_param(fflive_command, '-i', video_file)
+                replace_param(fflive_command, '-vf', None)
+
             try:
                 w = int(self.last_video_size.split('x')[0])
                 h = int(self.last_video_size.split('x')[1])
@@ -1460,9 +1490,12 @@ Have fun!
             if start_paused:
                 fflive_command.extend(['-start_paused'])
 
-            script_path = script_path or self.selected_script_path
-            if script_path:
-                fflive_command.extend(['-s', script_path])
+            if self.selected_script and self.selected_script.path:
+                if self.selected_script.is_filter:
+                    path = normalize_path(find_relative_path(self.cwd, self.selected_script.path))
+                    fflive_command.extend(['-vf', f'script=file={path}'])
+                else:
+                    fflive_command.extend(['-s', self.selected_script.path])
                 script_parameters = self.w.entry_script_parameters.get()
                 if script_parameters:
                     fflive_command.extend(['-sp', script_parameters])
@@ -1522,11 +1555,12 @@ Have fun!
                                                stdout=Process.Pipe.PIPE, stderr=Process.Pipe.DEVNULL,
                                                env=env_vars)
 
-            self.ffgac_process = Process('ffgac', ffgac_command, stdout=Process.Pipe.PIPE,
-                                            stderr=self.on_ffgac_console,
-                                            # stderr=Process.Pipe.STDOUT,
-                                            env=env_vars,
-                                            after=self.after, after_cancel=self.after_cancel)
+            if not self.selected_script or not self.selected_script.is_filter:
+                self.ffgac_process = Process('ffgac', ffgac_command, stdout=Process.Pipe.PIPE,
+                                                stderr=self.on_ffgac_console,
+                                                # stderr=Process.Pipe.STDOUT,
+                                                env=env_vars,
+                                                after=self.after, after_cancel=self.after_cancel)
             env_vars = self.get_env_vars()
             env_vars['AV_LOG_FORCE_COLOR'] = '1'
             env_vars['TERM'] = '1'
@@ -1546,7 +1580,7 @@ Have fun!
                 self.fflive_a_zmq.disconnect()
             self.update_mute_checkbutton()
 
-            self.fflive_process = Process('fflive', fflive_command, stdin=self.ffgac_process.process.stdout,
+            self.fflive_process = Process('fflive', fflive_command, stdin=self.ffgac_process.process.stdout if self.ffgac_process else None,
                                             stdout=self.on_console if not recording else Process.Pipe.PIPE,
                                             stderr=self.on_console,
                                             # stdout=Process.Pipe.STDOUT, stderr=Process.Pipe.STDOUT,
@@ -1778,8 +1812,8 @@ Have fun!
         self.root.update()
 
     def on_script_select(self, _event, skip_play_on_same_selection=False):
-        selected_script = self.selected_script
-        if self.selected_script and not self.selected_script.buildin:
+        prev_selected_script = self.selected_script
+        if prev_selected_script and not prev_selected_script.buildin:
             self.editor.save()
         selected_index = self.w.listbox_scripts.curselection()
         select_idx = None
@@ -1788,7 +1822,7 @@ Have fun!
             self.select_script(script_file_name)
             if self.selected_script:
                 select_idx = selected_index[0]
-                if not self.is_recording and not (selected_script == self.selected_script and skip_play_on_same_selection):
+                if not self.is_recording and not (prev_selected_script == self.selected_script and skip_play_on_same_selection):
                     self.start_ffplay()
         else:
             self.select_script()
