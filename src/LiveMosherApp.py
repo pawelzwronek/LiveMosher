@@ -710,18 +710,24 @@ Have fun!
                     self.listbox_scripts.append(None)
                 # Files
                 files.sort(key=cmp_to_key(lambda x, y: locale.strcoll(starting_underscore(x), starting_underscore(y))), reverse=False)
+                scripts = []
                 for file in files:
                     if file.endswith(".js") or file.endswith(".mjs") or file.endswith(".py"):
-                        file_icon = '▹'
-                        self.w.listbox_scripts.insert(tk.END, format_path(file_icon + re.sub(r'.js$|.mjs$|.py$', '', file, flags=re.IGNORECASE), path_deep))
                         full_path = normalize_path(os.path.join(root, file))
                         script = Script(full_path, buildin=not is_edited_scripts)
-                        self.listbox_scripts.append(script)
+                        scripts.append(script)
                         with open(full_path, 'r', encoding='utf-8') as f:
                             source = f.read()
                             is_main = re.search(r'export +function +(glitch_frame|filter) *\(', source)
                             script.type = Script.Type.MAIN if is_main else Script.Type.HELPER
                             script.is_filter = is_main and is_main.group(1) == 'filter'
+
+                scripts.sort(key=lambda x: x.type == Script.Type.MAIN, reverse=True)
+                for script in scripts:
+                    file_icon = '▹'
+                    file = os.path.basename(script.path)
+                    self.w.listbox_scripts.insert(tk.END, format_path(file_icon + re.sub(r'.js$|.mjs$|.py$', '', file, flags=re.IGNORECASE), path_deep))
+                    self.listbox_scripts.append(script)
 
 
         traverse_dir(self.resolve_relative_path(EDITED_SCRIPTS_DIR), is_edited_scripts=True)
