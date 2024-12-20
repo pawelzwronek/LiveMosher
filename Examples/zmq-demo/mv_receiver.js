@@ -1,3 +1,6 @@
+// This is a basic example of sending (with request for a response) a data (1 random byte) to a ZMQ socket.
+// After sending the data, it checks if there is a response and logs the length of the received data.
+
 import * as zmq from "zmq";
 
 import {

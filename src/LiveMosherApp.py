@@ -783,18 +783,25 @@ Have fun!
                     self.update_play_text()
                 else:
                     play_markers = self.start_mark_t <= self.start_video_at <= self.end_mark_t
-                    end_mark_frame = self.timeToframe(self.end_mark_t) if play_markers else self.input_frames_count
-                    if self.is_playing and\
-                            not self.ffgac_process and\
+                    end_mark_frame = self.timeToframe(self.end_mark_t) if play_markers else self.input_frames_count or None
+                    is_filter = self.selected_script and self.selected_script.is_filter
+                    if self.is_playing:
+                        end_detected = False
+                        if not self.ffgac_process and not is_filter and\
                             (time.time() - self.last_progres_update_t) > .1 and\
-                            end_mark_frame is not None and\
-                            self.current_frame >= (end_mark_frame - 5):
-                        print('No progress update for 0.1s. End of video detected.')
-                        if not self.is_recording and not self.is_paused:
-                            restart_ffplay = True
-                        self.is_playing = False
-                        self.is_paused = True
-                        self.update_play_text()
+                            end_mark_frame is not None and self.current_frame >= (end_mark_frame - 5):
+                            print('No progress update for 0.1s. End of video detected.')
+                            end_detected = True
+                        elif is_filter and end_mark_frame is not None and self.current_frame >= (end_mark_frame - 2):
+                            print('End marker detected.')
+                            end_detected = True
+
+                        if end_detected:
+                            if not self.is_recording and not self.is_paused:
+                                restart_ffplay = True
+                            self.is_playing = False
+                            self.is_paused = True
+                            self.update_play_text()
                     self.check_ffplay_process_timer = self.after(next_delay, self.check_ffplay_process, window_title)
 
             if self.check_if_process_finished(self.ffgac_process):
@@ -1396,8 +1403,7 @@ Have fun!
             # Encode input file to mpeg4 raw video stream
             ffgac_command = [
                 self.get_bin('ffgac'),
-                # Transcode at 1.1x speed
-                # '-readrate', f'{self.get_speed() * 1.1:.4f}',
+                # '-readrate', f'{self.get_speed() * 1.1:.4f}', # Transcode at 1.1x speed
                 '-accurate_seek',
                 '-ss', str(self.start_video_at),
                 *(['-to', str(self.end_mark_t)] if play_markers else []),
@@ -1405,10 +1411,12 @@ Have fun!
                 # '-nostats',
                 '-stats',
                 '-hide_banner',
-                '-i', video_file, '-an', '-mpv_flags', '+nopimb+forcemv', '-qscale:v', '0', '-g', 'max',
-                '-sc_threshold', 'max', '-vcodec', 'mpeg4', '-vf', 'scale=1280:720',
+                '-i', video_file,
+                '-an', # No audio
+                '-mpv_flags', '+nopimb+forcemv', '-qscale:v', '0', '-g', 'max', '-sc_threshold', 'max', '-vcodec', 'mpeg4',
+                # '-vf', 'scale=1280:720',
                 '-f', 'rawvideo',
-                '-'
+                '-' # Output to stdout
             ]
 
             # For audio playing process (acurate_seek not workign in fflive)
@@ -1420,11 +1428,10 @@ Have fun!
                 '-nostats',
                 '-hide_banner',
                 '-i', video_file,
-                '-mpv_flags', '+nopimb+forcemv', '-qscale:v', '0', '-g', 'max',
-                '-sc_threshold', 'max', '-vcodec', 'mpeg4', '-vf', 'scale=2:2',
-                 '-vcodec', 'mpeg4',
-                '-f', 'nut',
-                '-'
+                '-mpv_flags', '+nopimb+forcemv', '-qscale:v', '0', '-g', 'max', '-sc_threshold', 'max', '-vcodec', 'mpeg4',
+                '-vf', 'scale=2:2', # Scale to 2x2 pixels
+                '-f', 'nut', # 'nut' container format
+                '-' # Output to stdout
             ]
 
 
@@ -1457,17 +1464,10 @@ Have fun!
                 # '-fflags', 'nobuffer', '-avioflags', 'direct',
             ]
 
-            def replace_param(cmd, param, new_value):
-                idx = cmd.index(param)
-                if new_value:
-                    cmd[idx + 1] = str(new_value)
-                else:
-                    cmd.pop(idx)
-                    cmd.pop(idx)
-
             if self.selected_script and self.selected_script.is_filter:
-                replace_param(fflive_command, '-i', video_file)
-                replace_param(fflive_command, '-vf', None)
+                idx = fflive_command.index('-vf')
+                fflive_command.pop(idx) # Remove default filter. It will be replaced by the filter script
+                fflive_command.pop(idx)
 
             try:
                 w = int(self.last_video_size.split('x')[0])
@@ -1561,7 +1561,7 @@ Have fun!
                                                stdout=Process.Pipe.PIPE, stderr=Process.Pipe.DEVNULL,
                                                env=env_vars)
 
-            if not self.selected_script or not self.selected_script.is_filter:
+            if not self.selected_script or self.selected_script.path:
                 self.ffgac_process = Process('ffgac', ffgac_command, stdout=Process.Pipe.PIPE,
                                                 stderr=self.on_ffgac_console,
                                                 # stderr=Process.Pipe.STDOUT,
@@ -1571,7 +1571,7 @@ Have fun!
             env_vars['AV_LOG_FORCE_COLOR'] = '1'
             env_vars['TERM'] = '1'
             env_vars.pop('AV_LOG_FORCE_256COLOR', None) # Disable 256 color output
-            if enable_audio:
+            if self.ffgac_a_process:
                 self.fflive_a_process = Process('fflive1', fflive_a_command, stdin=self.ffgac_a_process.process.stdout,
                                                 # stdout=Process.Pipe.STDOUT, stderr=Process.Pipe.STDOUT,
                                                 stdout=Process.Pipe.DEVNULL, stderr=Process.Pipe.DEVNULL,
@@ -1608,7 +1608,7 @@ Have fun!
                                                 idle_priority=True,
                                             )
 
-            # Install timer that polls for the fflive process to finish
+            # Install timer that polls for the fflive process to detect if it's still running
             self.fflive_window_title = window_title
             self.check_ffplay_process_timer = self.after(500, self.check_ffplay_process, window_title)
 

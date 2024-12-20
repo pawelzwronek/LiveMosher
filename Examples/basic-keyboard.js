@@ -14,10 +14,12 @@ export function setup(args)
 
 export function glitch_frame(frame, stream)
 {
-    // Make sure preview window is focused when pressing keys
-
+    // MAKE SURE PREVIEW WINDOW IS FOCUSED WHEN PRESSING KEYS
     const fwd_mvs = frame.mv?.forward;
     if (!fwd_mvs) return;
+
+    // set motion vector overflow behaviour in ffedit to "truncate"
+    frame.mv.overflow = "truncate";
 
     let event = null;
     do {

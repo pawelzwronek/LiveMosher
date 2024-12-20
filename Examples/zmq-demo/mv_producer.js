@@ -1,3 +1,6 @@
+// This is a basic example of sending (pushing) a data (motion vectors) to a ZMQ socket.
+// See 'midi.js' how to receive (pull) them.
+
 import * as zmq from "zmq";
 
 import {
@@ -13,8 +16,6 @@ export function setup(args)
   const ctx = new zmq.Context();
   zpush = ctx.socket(zmq.PUSH);
   zpush.connect("tcp://localhost:5555");
-
-  // (new ZMQ()).socket(ZMQ.ZMQ_PUSH);
 }
 
 export function glitch_frame(frame, stream)
@@ -24,6 +25,6 @@ export function glitch_frame(frame, stream)
   if ( !fwd_mvs )
     return;
 
-  const data = fwd_mvs.serialize();
+  const data = fwd_mvs.toUint8FFArray();
   zpush.send(data, zmq.DONTWAIT);
 }
