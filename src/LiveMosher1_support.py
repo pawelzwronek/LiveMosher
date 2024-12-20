@@ -310,39 +310,39 @@ class LiveMosherGui:
         top_width = self.top.winfo_width()
         top_height = self.top.winfo_height()
         if event.width == top_width and event.height == top_height and self.org_geo_top:
-            # print('resize:', event)
-            # if self.ffplay_window_id:
-            #     print("Resizing", event.width, event.height)
-            #     win32gui.MoveWindow(self.ffplay_window_id, 0, 0, event.width, event.height, True)
             top_org = self.org_geo_top
             top_org_width = int(top_org['width'])
             top_org_height = int(top_org['height'])
 
-            widgets_stick_bottom = [self.w.scrolledText_console, self.w.Label5]
-            for widget in widgets_stick_bottom:
-                x, y, w, h = widget.place_info()['x'], widget.place_info()['y'], widget.place_info()['width'], widget.place_info()['height']
-                x, y, w, h = int(x), int(y), int(w), int(h)
-                org_geo = self.slaves_org_geo_map[widget if widget in self.slaves_org_geo_map else widget.master]
-                y = top_height - top_org_height + int(org_geo['y'])
-                width = top_width - (top_org_width - int(org_geo['width']))
-                widget.place(y=y, width=width)
-
+            widgets_stick_bottom = [self.w.scrolledText_console, self.w.Label5, self.w.label_issue]
+            widgets_stick_right = [self.w.label_issue]
             widgets_resize_bottom = [self.w.listbox_scripts, self.w.scrolledtext_script_editor]
-            for widget in widgets_resize_bottom:
+            widgets_resize_right = [self.w.scrolledText_console, self.w.scrolledtext_script_editor, self.w.entry_script_parameters]
+
+            all_widgets = set(widgets_stick_bottom + widgets_stick_right + widgets_resize_bottom + widgets_resize_right)
+            for widget in all_widgets:
                 x, y, w, h = widget.place_info()['x'], widget.place_info()['y'], widget.place_info()['width'], widget.place_info()['height']
                 x, y, w, h = int(x), int(y), int(w), int(h)
                 org_geo = self.slaves_org_geo_map[widget if widget in self.slaves_org_geo_map else widget.master]
-                height = top_height - (top_org_height - int(org_geo['height']))
-                widget.place(height=height)
 
-            widgets_resize_right = [self.w.scrolledtext_script_editor, self.w.entry_script_parameters]
-            for widget in widgets_resize_right:
-                x, y, w, h = widget.place_info()['x'], widget.place_info()['y'], widget.place_info()['width'], widget.place_info()['height']
-                x, y, w, h = int(x), int(y), int(w), int(h)
-                org_geo = self.slaves_org_geo_map[widget if widget in self.slaves_org_geo_map else widget.master]
-                width = top_width - (top_org_width - int(org_geo['width']))
-                widget.place(width=width)
+                if widget in widgets_stick_bottom:
+                    y = top_height - top_org_height + int(org_geo['y'])
+                    widget.place(y=y)
+                    if widget == self.w.scrolledText_console:
+                        height = int(org_geo['height']) + 20
+                        widget.place(height=height)
 
+                if widget in widgets_stick_right:
+                    x = top_width - top_org_width + int(org_geo['x'])
+                    widget.place(x=x)
+
+                if widget in widgets_resize_bottom:
+                    height = top_height - (top_org_height - int(org_geo['height']))
+                    widget.place(height=height)
+
+                if widget in widgets_resize_right:
+                    width = top_width - (top_org_width - int(org_geo['width']))
+                    widget.place(width=width)
 
     # def make_bottom_sticky(self, widget: tk.Widget):
     #     print('widget', widget.place_info())

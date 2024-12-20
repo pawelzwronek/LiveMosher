@@ -8,6 +8,7 @@ import time
 import traceback
 import re
 import signal
+import webbrowser
 
 from typing import List
 
@@ -131,9 +132,10 @@ class LiveMosherApp(LiveMosherGui):
         self.w.entry_script_parameters.bind('<Any-KeyRelease>', lambda _: self.project_changed())
         self.w.entry_video_input.bind('<Any-KeyRelease>', lambda _: self.project_changed())
         self.w.entry_video_output.bind('<Any-KeyRelease>', self.on_output_path_change)
-        self.w.label_total_time.configure(text=self.formatSeconds(0))
-        self.w.label_progress.configure(text=self.formatSeconds(0))
         self.w.label_fps.configure(text='FPS: -')
+        self.w.label_issue.bind('<Button-1>', lambda _: webbrowser.open('https://github.com/pawelzwronek/LiveMosher/issues'))
+        self.w.label_progress.configure(text=self.formatSeconds(0))
+        self.w.label_total_time.configure(text=self.formatSeconds(0))
         self.w.listbox_scripts.bind('<ButtonRelease-1>', self.on_script_select)
         self.w.listbox_scripts.bind('<Button-2>', self.on_listbox_scripts_rmb)
         self.w.listbox_scripts.bind('<Button-3>', self.on_listbox_scripts_rmb)
