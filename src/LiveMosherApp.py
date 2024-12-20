@@ -9,6 +9,7 @@ import traceback
 import re
 import signal
 import webbrowser
+import zipfile
 
 from typing import List
 
@@ -21,7 +22,7 @@ from zmq import Context as zmq_Context
 from lib.colored_print import print_error, print, print_warn # pylint: disable=redefined-builtin
 from lib.framerate import find_fraction
 from lib.misc import IS_MAC, IS_WIN, copy_file, find_next_output_file, find_relative_path, fix_windows_network_path, \
-                    normalize_path, parse_float, path_replace_not_allowed_chars, resolve_relative_path
+                    normalize_path, open_explorer_and_select_file, parse_float, path_replace_not_allowed_chars, resolve_relative_path
 from lib.process import Line, Process
 
 from LiveMosher1_support import LiveMosherGui, start_up
@@ -106,7 +107,7 @@ class LiveMosherApp(LiveMosherGui):
         self.midi_zmq = ZmqReqPush(ctx=self.zmq_context_midi, name='midi_emu', mode=ZmqReqMode.TCP, is_push=True)
 
         self.w.button_clone.configure(command=self.on_clone_script)
-        self.w.button_edit_script.configure(command=self.on_edit_script)
+        self.w.button_edit_script.configure(command=self.on_edit_share_script)
         self.w.button_start_mark.configure(command=self.on_start_mark)
         self.w.button_end_mark.configure(command=self.on_end_mark)
         self.w.button_open_project.configure(command=self.on_open_project)
@@ -641,14 +642,15 @@ Have fun!
                 self.w.entry_script_parameters.delete(0, tk.END)
             self.project_changed()
 
-            self.after(1, self.show_hide, self.w.button_edit_script, self.selected_script.buildin)
+            self.show_hide(self.w.button_edit_script, True)
         else:
             self.selected_script = None
             self.w.entry_script_parameters.delete(0, tk.END)
             self.editor.open_file('', read_only=False)
             self.editor.set_text(self.editor_empty_text, self.editor_empty_text_color)
-            self.after(1, self.show_hide, self.w.button_edit_script, False)
+            self.show_hide(self.w.button_edit_script, False)
 
+        self.w.button_edit_script.configure(text='Edit' if script and script.buildin else 'Share')
         self.w.button_rename_script.configure(state=tk.NORMAL if script and not script.buildin else tk.DISABLED)
         self.w.button_clone.configure(state=tk.NORMAL if script and not script.buildin else tk.DISABLED)
         # Show selected script in the list
@@ -1921,10 +1923,28 @@ Have fun!
         self.w.label_saving.configure(text='Saving...')
         self.after(1000, lambda: self.w.label_saving.configure(text=''))
 
-    def on_edit_script(self):
+    def on_edit_share_script(self):
+        def find_imports(file_path):
+            ret = []
+            with open(file_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            for line in lines:
+                js_lib_re = r'from\s+["\'](.+?)["\']|import\s+["\'](.+?)["\']'
+                js_path = re.search(js_lib_re, line)
+                if js_path:
+                    js_path = js_path.group(1) or js_path.group(2)
+                    if js_path:
+                        js_path = os.path.join(os.path.dirname(file_path), js_path)
+                        if not js_path.endswith('.js') and not js_path.endswith('.mjs'):
+                            js_path += '.js'
+                        if os.path.exists(js_path):
+                            ret.append(js_path)
+            return ret
+
+        edited_scripts_dir = self.resolve_relative_path(EDITED_SCRIPTS_DIR)
         if self.selected_script and self.selected_script.buildin:
+            # Copy the buildin script to the edited scripts directory
             try:
-                edited_scripts_dir = self.resolve_relative_path(EDITED_SCRIPTS_DIR)
                 def to_edited_path(path):
                     dirs = normalize_path(path).split('/')
                     path = os.path.join(edited_scripts_dir, *(path.split('/')[dirs.index(SCRIPTS_DIR) + 1:]))
@@ -1933,22 +1953,11 @@ Have fun!
                 path = find_next_output_file(path)
                 if copy_file(self.selected_script.path, path, replace=False):
                     def find_recursive_js_imports_and_copy_them_too(file_path):
-                        with open(file_path, 'r', encoding='utf-8') as f:
-                            lines = f.readlines()
-                        for line in lines:
-                            js_lib_re = r'from\s+["\'](.+?)["\']|import\s+["\'](.+?)["\']'
-                            js_path = re.search(js_lib_re, line)
-                            if js_path:
-                                js_path = js_path.group(1) or js_path.group(2)
-                                if js_path:
-                                    js_path = os.path.join(os.path.dirname(file_path), js_path)
-                                    if not js_path.endswith('.js') and not js_path.endswith('.mjs'):
-                                        js_path += '.js'
-                                    if os.path.exists(js_path):
-                                        dst_path = to_edited_path(js_path)
-                                        if copy_file(js_path, dst_path, replace=False):
-                                            print('Copied library to:', dst_path)
-                                            find_recursive_js_imports_and_copy_them_too(js_path)
+                        for js_path in find_imports(file_path):
+                            dst_path = to_edited_path(js_path)
+                            if copy_file(js_path, dst_path, replace=False):
+                                print('Copied library to:', dst_path)
+                                find_recursive_js_imports_and_copy_them_too(js_path)
                     print('Copied script:', path)
                     find_recursive_js_imports_and_copy_them_too(self.selected_script.path)
                     self.editor.close_file()
@@ -1957,6 +1966,28 @@ Have fun!
                     self.on_script_select(None)
                 else:
                     print_error(f'Error copying script to {path}')
+            except ValueError:
+                pass
+        elif self.selected_script and not self.selected_script.buildin:
+            # Create a zip file with the script and all its imports
+            try:
+                self.editor.save()
+                zip_path = os.path.splitext(self.selected_script.path)[0] + '.zip'
+                zip_path = find_next_output_file(zip_path)
+                if zip_path:
+                    with zipfile.ZipFile(zip_path, 'w') as z:
+                        def find_recursive_js_imports_and_add_them_too(file_path):
+                            for js_path in find_imports(file_path):
+                                z.write(js_path, os.path.relpath(js_path, edited_scripts_dir))
+                                print('Added library to zip:', js_path)
+                                find_recursive_js_imports_and_add_them_too(js_path)
+                        z.write(self.selected_script.path, os.path.relpath(self.selected_script.path, edited_scripts_dir))
+                        find_recursive_js_imports_and_add_them_too(self.selected_script.path)
+                    print('Saved script as zip:', zip_path)
+                    zip_name = os.path.basename(zip_path)
+                    if messagebox.askokcancel('Share', f'Press OK to show bundled {zip_name} file and to open www browser.'):
+                        open_explorer_and_select_file(zip_path)
+                        webbrowser.open('https://github.com/pawelzwronek/LiveMosher/discussions/categories/show-and-tell')
             except ValueError:
                 pass
 
@@ -2048,7 +2079,7 @@ Have fun!
 
             state = tk.NORMAL if buildin else tk.DISABLED
             if buildin:
-                self.listbox_scripts_menu.add_command(label='Edit', command=self.on_edit_script, state=state)
+                self.listbox_scripts_menu.add_command(label='Edit', command=self.on_edit_share_script, state=state)
             self.listbox_scripts_menu.add_separator()
             self.listbox_scripts_menu.add_command(label='Reload list', command=self.update_scripts_list)
             self.listbox_scripts_menu.post(event.x_root, event.y_root)

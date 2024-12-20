@@ -1,5 +1,6 @@
-
 import os
+import platform
+import subprocess
 import sys
 
 IS_WIN = os.name == 'nt'
@@ -266,3 +267,17 @@ def parse_float(value, default = 0.0):
         return float(value)
     except ValueError:
         return default
+
+def open_explorer_and_select_file(file_path):
+    file_path = os.path.abspath(file_path)  # Normalize the file path
+
+    if platform.system() == "Windows":
+        subprocess.run(["explorer", "/select,", file_path], check=False)
+    elif platform.system() == "Darwin":  # macOS
+        subprocess.run(["open", "-R", file_path], check=False)
+    elif platform.system() == "Linux":  # Linux
+        # Since Linux doesn't natively support selecting a file, this opens the folder
+        folder_path = os.path.dirname(file_path)
+        subprocess.run(["xdg-open", folder_path], check=False)
+    else:
+        raise OSError("Unsupported operating system")
