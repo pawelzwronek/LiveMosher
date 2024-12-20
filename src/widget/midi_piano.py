@@ -80,6 +80,8 @@ class MidiPiano:
             child.config(highlightthickness=0)
             if bg_color:
                 child.config(bg=bg_color)
+            if isinstance(child, tk.Label):
+                child.configure(font="-family {Segoe UI} -size 8")
 
     def destroy(self):
         self.frame.destroy()
@@ -139,14 +141,14 @@ class MidiPiano:
             x1 = x0 + WHITE_KEY_WIDTH
             fill = "white"
             draw_rounded_key(self, x0, x1, y1=2, y2=WHITE_KEY_HEIGHT, fill=fill, outline="black")
-            self.canvas.create_text((x0 + x1) / 2, 180, text=key)
+            self.canvas.create_text((x0 + x1) / 2, WHITE_KEY_HEIGHT - 17, text=key, font="-family {Segoe UI} -size 7")
 
         for i, key in enumerate(self.black_keys):
             x0 = (i + 1) * WHITE_KEY_WIDTH - BLACK_KEY_WIDTH / 2 + self.draw_x_offset
             x1 = x0 + BLACK_KEY_WIDTH
             if key:
                 draw_rounded_key(self, x0, x1, y1=2, y2=BLACK_KEY_HEIGHT, fill="black")
-                self.canvas.create_text((x0 + x1) / 2, 60, text=key, fill="white")
+                self.canvas.create_text((x0 + x1) / 2, BLACK_KEY_HEIGHT - 17, text=key, fill="white", font="-family {Segoe UI} -size 7")
 
 
     def _on_canvas_press(self, event):

@@ -5,7 +5,7 @@ export class MIDIInput {
     keys = [];
 
     constructor() {
-        this.midiin = new rtmidi.In(rtmidi.WINDOWS_MM, 'RtMidi Input Client', 1024);
+        this.midiin = new rtmidi.In(rtmidi.UNSPECIFIED, 'RtMidi Input Client', 1024);
         this.midiout = new rtmidi.Out();
 
         // Fallback to ZMQ if no MIDI ports are available
@@ -43,60 +43,42 @@ export class MIDIInput {
         // Check if any MIDI ports are available
         const count = midiin.getPortCount();
 
-        if (count === 0)
-        {
-            this.zmq = new zmq.Context();
-            this.zpull = this.zmq.socket(zmq.PULL);
-            const ret = this.zpull.bind('tcp://localhost:0');
-            if (ret == -1) {
-                console.log('ZMQ bind failed: ' + ret);
-                this.zmq = undefined;
-                this.zpull = undefined;
-                throw 'No MIDI ports. ZMQ bind failed';
-            }
-            const bound_url = this.zpull.getsockopt(zmq.LAST_ENDPOINT);
-            // DON'T CHANGE THE FOLLOWING LINE, IT'S USED FOR DETECTING THE ZMQ URL IN MAIN APP
-            console.log('No MIDI ports. Falling back to ZMQ midi eumulation on: ' + bound_url);
-        }
-        else
-        {
-            let portS = 's';
-            if (count === 1) portS = '';
-            console.log('RtMidi: ' + count + ' port' + portS + ' found');
+        console.log('RtMidi: ' + count + ' port' + (count > 1 ? 's' : '') + ' found');
 
-            // Print names and select port number
+        // Print names and select port number
+        for (let i = 0; i < count; i++) {
+            const name = midiin.getPortName(i);
+            if (name == port_name) port_num = i;
+            console.log(i + '. ' + name);
+        }
+
+        // Sanity check for port name
+        if (port_name !== undefined && port_num === undefined) {
+            console.log('Selected port name (' + port_name + ') is not available.');
+            throw 'Bad MIDI port name';
+        }
+
+        // Sanity check for port number
+        if (port_num >= count) {
+            printf('Selected port number (' + port_num + ') greater than real number of ports (' + count + ').');
+            throw 'Bad MIDI port number';
+        }
+
+        // No port selected yet, use heuristics
+        if (port_num === undefined) {
             for (let i = 0; i < count; i++) {
                 const name = midiin.getPortName(i);
-                if (name == port_name) port_num = i;
-                console.log(i + '. ' + name);
-            }
-
-            // Sanity check for port name
-            if (port_name !== undefined && port_num === undefined) {
-                console.log('Selected port name (' + port_name + ') is not available.');
-                throw 'Bad MIDI port name';
-            }
-
-            // Sanity check for port number
-            if (port_num >= count) {
-                printf('Selected port number (' + port_num + ') greater than real number of ports (' + count + ').');
-                throw 'Bad MIDI port number';
-            }
-
-            // No port selected yet, use heuristics
-            if (port_num === undefined) {
-                for (let i = 0; i < count; i++) {
-                    const name = midiin.getPortName(i);
-                    if (name.includes('Midi Through')) continue;
-                    if (name.includes(repeater_name)) {
-                        is_repeater = true;
-                        port_num = i;
-                        break;
-                    }
-                    if (port_num === undefined) port_num = i;
+                if (name.includes('Midi Through')) continue;
+                if (name.includes(repeater_name)) {
+                    is_repeater = true;
+                    port_num = i;
+                    break;
                 }
+                if (port_num === undefined) port_num = i;
             }
+        }
 
+        if (port_num !== undefined) {
             // Open input port
             console.log('Opening input port number ' + port_num);
             midiin.openPort(port_num);
@@ -112,6 +94,21 @@ export class MIDIInput {
                 this.midiout.sendMessage([0xf0, 0x00, 0xf7]);
                 this.midiout.closePort();
             }
+        }
+        else
+        {
+            this.zmq = new zmq.Context();
+            this.zpull = this.zmq.socket(zmq.PULL);
+            const ret = this.zpull.bind('tcp://localhost:0');
+            if (ret == -1) {
+                console.log('ZMQ bind failed: ' + ret);
+                this.zmq = undefined;
+                this.zpull = undefined;
+                throw 'No MIDI ports. ZMQ bind failed';
+            }
+            const bound_url = this.zpull.getsockopt(zmq.LAST_ENDPOINT);
+            // DON'T CHANGE THE FOLLOWING LINE, IT'S USED FOR DETECTING THE ZMQ URL IN MAIN APP
+            console.log('No MIDI ports. Falling back to ZMQ midi eumulation on: ' + bound_url);
         }
     }
 

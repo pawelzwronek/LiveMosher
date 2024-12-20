@@ -288,20 +288,19 @@ class LiveMosherGui:
                 self.editor.text_widget.update_line_numbers()
 
                 # Travers all widgets in the app and for all button widgets disable takefocus
-                def traverse_widgets(widget):
-                    for child in widget.winfo_children():
-                        traverse_widgets(child)
+                self.fix_labels_font(self.top)
 
-                        if isinstance(child, tk.Label):
-                            font = tk.font.Font(font=child["font"])
-                            actual = font.actual() # {'family': 'DejaVu Sans', 'size': 9,
-                            if actual['size'] == 8 and IS_MAC:
-                                child.configure(font=(actual['family'], actual['size'] + 3))
-                            if child['text'].startswith('Parameters'):
-                                child.configure(text=child['text'].replace('(-sp)', '[-sp]'))
+    def fix_labels_font(self, widget):
+        for child in widget.winfo_children():
+            self.fix_labels_font(child)
 
-                traverse_widgets(self.top)
-
+            if isinstance(child, tk.Label):
+                font = tk.font.Font(font=child["font"])
+                actual = font.actual() # {'family': 'DejaVu Sans', 'size': 9,
+                if actual['size'] == 8 and IS_MAC:
+                    child.configure(font=(actual['family'], actual['size'] + 3))
+                if child['text'].startswith('Parameters'):
+                    child.configure(text=child['text'].replace('(-sp)', '[-sp]'))
 
     def on_first_visibility(self, _event):
         pass

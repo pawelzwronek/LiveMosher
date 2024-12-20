@@ -699,7 +699,9 @@ Have fun!
             def starting_underscore(x):
                 x = os.path.splitext(x)[0]
                 return re.sub(r'^(_+)', 'ZZZ', x)
-            for root, _dirs, files in os.walk(current_dir):
+            dirs = list(os.walk(current_dir))
+            dirs.sort(key=lambda x: x[0])
+            for root, _dirs, files in dirs:
                 current_dir1 = root[len(root_dir) + 1:].replace('\\\\', '/').replace('\\', '/')
                 path_deep = 0 if not current_dir1 else (current_dir1.count('/') + 1)
                 path_deep += 1
@@ -1141,6 +1143,7 @@ Have fun!
             top = tk.Toplevel(self.root)
             self.piano = MidiPiano(top, bg_color=self.top_background)
             self.piano.set_on_message_cb(lambda msg: self.midi_zmq.req_msg(str(msg)) if self.midi_zmq.connected else None)
+            self.fix_labels_font(top)
 
         if self.piano:
             self.piano.show(show, in_ms)
@@ -1679,6 +1682,7 @@ Have fun!
         window_title = f'{NAME} Test window'
         start_pos = 200, 200
         fflive_zmq = ZmqReqPush(ctx=self.zmq_context, name='fflive_test')
+        fflive_zmq.generate_urls()
         fflive_command = [
             self.get_bin('fflive'),
             '-f', 'lavfi', '-i', 'nullsrc=s=300x10',
