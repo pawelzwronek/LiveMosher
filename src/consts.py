@@ -1,0 +1,7 @@
+NAME = 'Live Mosher'
+SCRIPTS_DIR = 'Examples'
+EDITED_SCRIPTS_DIR = 'My moshers'
+PROJECT_EXT = '.lmp'
+VERSION_FILE = 'version.txt'
+REPO_URL = 'https://github.com/pawelzwronek/LiveMosher'
+FFGLITCH_URL = 'https://ffglitch.org'

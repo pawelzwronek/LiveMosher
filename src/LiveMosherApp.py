@@ -8,7 +8,6 @@ import time
 import traceback
 import re
 import signal
-import webbrowser
 import zipfile
 
 from typing import List
@@ -19,6 +18,7 @@ from tkinter import filedialog, messagebox, simpledialog
 from send2trash import send2trash
 from zmq import Context as zmq_Context
 
+from consts import EDITED_SCRIPTS_DIR, NAME, PROJECT_EXT, REPO_URL, SCRIPTS_DIR, VERSION_FILE
 from lib.colored_print import print_error, print, print_warn # pylint: disable=redefined-builtin
 from lib.framerate import find_fraction
 from lib.misc import IS_MAC, IS_WIN, copy_file, find_next_output_file, find_relative_path, fix_windows_network_path, \
@@ -34,12 +34,6 @@ from zmq_req import ZmqReqPush, ZmqReqMode
 #pylint: disable=global-statement
 #pylint: disable=c-extension-no-member
 #pylint: disable=broad-except
-
-NAME = 'Live Mosher'
-SCRIPTS_DIR = 'Examples'
-EDITED_SCRIPTS_DIR = 'My moshers'
-PROJECT_EXT = '.lmp'
-VERSION_FILE = 'version.txt'
 
 MIN_SPEED = 0.1
 MAX_SPEED = 5
@@ -133,8 +127,9 @@ class LiveMosherApp(LiveMosherGui):
         self.w.entry_script_parameters.bind('<Any-KeyRelease>', lambda _: self.project_changed())
         self.w.entry_video_input.bind('<Any-KeyRelease>', lambda _: self.project_changed())
         self.w.entry_video_output.bind('<Any-KeyRelease>', self.on_output_path_change)
+        self.w.label_about.bind('<Button-1>', lambda _: self.show_about_dialog())
         self.w.label_fps.configure(text='FPS: -')
-        self.w.label_issue.bind('<Button-1>', lambda _: webbrowser.open('https://github.com/pawelzwronek/LiveMosher/issues'))
+        self.w.label_issue.bind('<Button-1>', lambda _: self.open_url(f'{REPO_URL}/issues'))
         self.w.label_progress.configure(text=self.formatSeconds(0))
         self.w.label_total_time.configure(text=self.formatSeconds(0))
         self.w.listbox_scripts.bind('<ButtonRelease-1>', self.on_script_select)
@@ -1991,7 +1986,7 @@ Have fun!
                     zip_name = os.path.basename(zip_path)
                     if messagebox.askokcancel('Share', f'Press OK to show bundled {zip_name} file and to open www browser.'):
                         open_explorer_and_select_file(zip_path)
-                        webbrowser.open('https://github.com/pawelzwronek/LiveMosher/discussions/categories/show-and-tell')
+                        self.open_url('f{REPO_URL}/discussions/categories/show-and-tell')
             except ValueError:
                 pass
 

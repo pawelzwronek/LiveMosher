@@ -1,13 +1,15 @@
 #! /usr/bin/env python3
 import os
 import os.path
-import traceback
+# import traceback
+import webbrowser
 
 from tempfile import TemporaryDirectory
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import PhotoImage
 
+from consts import FFGLITCH_URL, REPO_URL
 from lib.colored_print import print_error, print_warn
 from lib.misc import IS_MAC, IS_LINUX, IS_WIN # find_window_hwnd_for_current_process, get_window_pos_size
 from widget.console import Color, Console
@@ -29,6 +31,7 @@ class LiveMosherGui:
         root = self.root
         self.root.iconphoto(True, PhotoImage(file=self.get_asset_path('gui/icons/icon.png')))
         self.title = title
+        self.version = ''
 
         self.top_background = '#e6e6e6'
 
@@ -297,8 +300,15 @@ class LiveMosherGui:
             if isinstance(child, tk.Label):
                 font = tk.font.Font(font=child["font"])
                 actual = font.actual() # {'family': 'DejaVu Sans', 'size': 9,
-                if actual['size'] == 8 and IS_MAC:
-                    child.configure(font=(actual['family'], actual['size'] + 3))
+                if IS_MAC:
+                    size = actual['size']
+                    is_underline = font.actual()['underline']
+                    # print(f'font: {font.actual()}, "{child["text"]}"')
+                    size_map = {8: 11, 9: 11, 12: 14, 14: 19}
+                    if size in size_map:
+                        # print(f'Changing font size from {size} to {size_map[size]}')
+                        size = size_map[size]
+                        child.configure(font=(actual['family'], size, "underline" if is_underline else ""))
                 if child['text'].startswith('Parameters'):
                     child.configure(text=child['text'].replace('(-sp)', '[-sp]'))
 
@@ -313,8 +323,8 @@ class LiveMosherGui:
             top_org_width = int(top_org['width'])
             top_org_height = int(top_org['height'])
 
-            widgets_stick_bottom = [self.w.scrolledText_console, self.w.Label5, self.w.label_issue]
-            widgets_stick_right = [self.w.label_issue]
+            widgets_stick_bottom = [self.w.scrolledText_console, self.w.Label5, self.w.label_issue, self.w.label_about]
+            widgets_stick_right = [self.w.label_issue, self.w.label_about]
             widgets_resize_bottom = [self.w.listbox_scripts, self.w.scrolledtext_script_editor]
             widgets_resize_right = [self.w.scrolledText_console, self.w.scrolledtext_script_editor, self.w.entry_script_parameters]
 
@@ -406,6 +416,9 @@ class LiveMosherGui:
             self.after_cancel(self.tooltip_timer)
             self.tooltip_timer = None
 
+    def open_url(self, url):
+        webbrowser.open(url)
+
     def console_clear(self):
         self.console.clear()
         self.ffgac_lines = []
@@ -422,6 +435,40 @@ class LiveMosherGui:
     def console_error(self, text: str):
         print_error(f'Console: {text}\033[0m') # Reset color
         self.console.log(text, Color.RED)
+
+    def show_about_dialog(self):
+        root1 = tk.Toplevel(self.root)
+        root1.transient(self.root)
+        root1.wait_visibility()
+        root1.grab_set()
+
+        w = LiveMosher1.ToplevelAbout(root1)
+        w.button_ok.configure(command=root1.destroy)
+        w.label_name.bind("<Button-1>", lambda _event: self.open_url(REPO_URL))
+        text = w.label_name.cget('text')
+        w.label_name.configure(text=text.replace('1.0', self.version))
+        w.label_ffglitch.bind("<Button-1>", lambda _event: self.open_url(FFGLITCH_URL))
+        root1.configure(background=self.top_background)
+        for child in root1.winfo_children():
+            if hasattr(child, 'config'):
+                if 'background' in child.config():
+                    child.config(background=self.top_background, highlightbackground=self.top_background)
+                if 'border' in child.config():
+                    child.config(border=0)
+                if 'borderwidth' in child.config():
+                    child.config(borderwidth=0)
+                if 'overrelief' in child.config():
+                    child.config(overrelief='flat')
+
+        self.fix_labels_font(root1)
+
+        # Place at the center of the parent
+        root1.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() - root1.winfo_width()) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - root1.winfo_height()) // 2
+        root1.geometry(f'+{x}+{y}')
+
+        self.root.wait_window(root1)
 
 
 root = None
