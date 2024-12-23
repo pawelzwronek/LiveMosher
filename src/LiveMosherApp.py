@@ -1500,7 +1500,9 @@ Have fun!
 
             if self.selected_script and self.selected_script.path:
                 if self.selected_script.is_filter:
-                    path = normalize_path(find_relative_path(self.cwd, self.selected_script.path))
+                    path = normalize_path(self.selected_script.path)
+                    if IS_WIN:
+                        path = normalize_path(find_relative_path(self.cwd, self.selected_script.path))
                     fflive_command.extend(['-vf', f'script=file={path}'])
                 else:
                     fflive_command.extend(['-s', self.selected_script.path])
@@ -1986,7 +1988,7 @@ Have fun!
                     zip_name = os.path.basename(zip_path)
                     if messagebox.askokcancel('Share', f'Press OK to show bundled {zip_name} file and to open www browser.'):
                         open_explorer_and_select_file(zip_path)
-                        self.open_url('f{REPO_URL}/discussions/categories/show-and-tell')
+                        self.open_url(f'{REPO_URL}/discussions/categories/show-and-tell')
             except ValueError:
                 pass
 

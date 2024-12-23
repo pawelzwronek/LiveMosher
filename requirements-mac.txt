@@ -1,2 +1,7 @@
 -r requirements-all.txt
+
+# dev
+pillow==11.0.0
+
+# app
 send2trash
