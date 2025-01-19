@@ -1085,12 +1085,13 @@ Have fun!
                     try:
                         frame = int(line.split('FRAME_NO:')[1].split(' ')[1])
                         if self.input_frames_count:
+                            # '-blockffplaykeys' block unpause by space
                             # Check if unpaused by user in fflive
-                            if self.is_paused and time.time() - self.pause_time > 2:
-                                print('Unpaused by user detected')
-                                self.is_paused = False
-                                self.fflive_start_paused = False
-                                self.update_play_text()
+                            # if self.is_paused and time.time() - self.pause_time > 2:
+                            #     print('Unpaused by user detected')
+                            #     self.is_paused = False
+                            #     self.fflive_start_paused = False
+                            #     self.update_play_text()
                             if not self.is_paused:
                                 current_frame = frame + self.timeToframe(self.start_video_at)
                                 self.on_frame_progress(current_frame)
