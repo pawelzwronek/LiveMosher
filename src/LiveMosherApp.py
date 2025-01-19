@@ -1534,7 +1534,7 @@ Have fun!
                 '-ss', str(self.start_video_at), # Sync adutio to video
                 '-i', video_file, # Copy audio from the original video
                 '-map', '0:v',
-                '-map', '1:a',
+                '-map', '1:a?',
                 '-c:a', 'copy',
                 # '-c:v', 'copy',
                 '-c:v', 'libx264',
