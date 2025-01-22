@@ -655,7 +655,7 @@ Have fun!
         self.update_play_text()
 
     def show_hide(self, button: tk.Button, show=True):
-        y = button.winfo_y()
+        y = int(button.place_info().get('y'))
         if y != 0:
             if show:
                 button.place(y=y + 10000 if y < 0 else y)
@@ -760,6 +760,9 @@ Have fun!
     def ping_window(self, req: ZmqReqPush):
         return req.connected and bool(req.req_msg('volume'))
 
+    def is_playing_markers(self):
+        return self.start_mark_t <= self.start_video_at <= (self.end_mark_t if self.end_mark_t > 0 else (self.input_duration or 0))
+
     check_ffplay_process_timer = None
     check_timer_running = False
     def check_ffplay_process(self, window_title):
@@ -783,8 +786,7 @@ Have fun!
                     self.kill_ffplay_processes(from_check_timer=True)
                     self.update_play_text()
                 else:
-                    play_markers = self.start_mark_t <= self.start_video_at <= self.end_mark_t
-                    end_mark_frame = self.timeToframe(self.end_mark_t) if play_markers else self.input_frames_count or None
+                    end_mark_frame = (self.timeToframe(self.end_mark_t) if self.is_playing_markers() and self.end_mark_t != -1 else self.input_frames_count) or None
                     is_filter = self.selected_script and self.selected_script.is_filter
                     if self.is_playing:
                         end_detected = False
@@ -1319,17 +1321,18 @@ Have fun!
         self.start_ffplay(start_at_sec=self.start_mark_t)
 
     def place_start_end_mark(self):
-        y = self.w.canvas_end_mark.winfo_y()
+        y = self.w.canvas_end_mark.place_info().get('y', 0)
         if y == 0:
             return
 
         input_duration = self.last_input_duration or parse_float(self.project['Project']['video_duration'], 0)
-        progress = self.start_mark_t / input_duration if (input_duration and self.start_mark_t >= 0) else 0
-        x = self.w.scale_progress.winfo_x() + (self.w.scale_progress.winfo_width() - 5) * progress + 1
+        progress = (self.start_mark_t / input_duration) if (input_duration and self.start_mark_t >= 0) else 0
+        progress_info = self.w.scale_progress.place_info()
+        x = int(progress_info.get('x', 0)) + (int(progress_info.get('width', 0)) - 5) * progress + 2
         self.w.canvas_start_mark.place(x=x, y=y)
 
         progress = self.end_mark_t / input_duration if (input_duration and self.end_mark_t >= 0) else 1
-        x = self.w.scale_progress.winfo_x() + (self.w.scale_progress.winfo_width() - 5) * progress + 1
+        x = int(progress_info.get('x', 0)) + (int(progress_info.get('width', 0)) - 5) * progress + 2
         self.w.canvas_end_mark.place(x=x, y=y)
 
     def get_bin(self, bin_name):
@@ -1356,8 +1359,7 @@ Have fun!
             return
 
         if start_at_sec is None:
-            played_markers = self.start_mark_t <= self.start_video_at <= self.end_mark_t
-            start_at_sec = max(0, self.start_mark_t) if played_markers else 0
+            start_at_sec = max(0, self.start_mark_t) if self.is_playing_markers() else 0
 
         try:
             start_at_sec = max(0, start_at_sec)
@@ -1401,7 +1403,7 @@ Have fun!
             self.update_play_text()
 
 
-            play_markers = self.start_mark_t <= self.start_video_at <= self.end_mark_t
+            play_markers = self.is_playing_markers()
 
             # Encode input file to mpeg4 raw video stream
             ffgac_command = [
@@ -1409,7 +1411,7 @@ Have fun!
                 # '-readrate', f'{self.get_speed() * 1.1:.4f}', # Transcode at 1.1x speed
                 '-accurate_seek',
                 '-ss', str(self.start_video_at),
-                *(['-to', str(self.end_mark_t)] if play_markers else []),
+                *(['-to', str(self.end_mark_t)] if play_markers and self.end_mark_t > 0 else []),
                 # '-re', # Realtime
                 # '-nostats',
                 '-stats',
@@ -1541,7 +1543,7 @@ Have fun!
                 '-preset', 'medium', # ultrafast superfast veryfast faster fast medium slow slower veryslow placebo
                 '-crf', '18', # Set quality to 18, 0 is lossless 51 is worst
                 '-shortest', # Stop encoding when the shortest stream ends
-                *(['-t', str(self.end_mark_t - self.start_video_at)] if play_markers else []),
+                *(['-t', str(self.end_mark_t - self.start_video_at)] if play_markers and self.end_mark_t > 0 else []),
                 '-loglevel', 'info',
                 '-hide_banner',
                 self.output_path
