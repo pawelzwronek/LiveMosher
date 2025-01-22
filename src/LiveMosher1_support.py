@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+import ctypes
 import os
 import os.path
 # import traceback
@@ -7,6 +8,7 @@ import webbrowser
 from tempfile import TemporaryDirectory
 import tkinter as tk
 import tkinter.ttk as ttk
+from tkinter import font as tkfont
 from tkinter import PhotoImage
 
 from consts import FFGLITCH_URL, REPO_URL
@@ -27,8 +29,20 @@ HIDE_TOOLBAR = False
 class LiveMosherGui:
     def __init__(self, title=''):
         global root
+
+        if IS_WIN:
+            ctypes.windll.user32.SetProcessDPIAware()
+
         self.root = tk.Tk()
         root = self.root
+
+        self.scale = max(1.0, self.measure_scale())
+        if IS_WIN:
+            self.scale = 1.0 + (self.scale - 1.0) / 1.333
+        print('scale:', self.scale)
+        print('tk_scaling:', root.tk.call('tk', 'scaling'))
+        print('dpi:', root.winfo_fpixels('1c'))
+
         self.root.iconphoto(True, PhotoImage(file=self.get_asset_path('gui/icons/icon.png')))
         self.title = title
         self.version = ''
@@ -47,7 +61,7 @@ class LiveMosherGui:
         # Creates a toplevel widget.
         self.w: LiveMosher1.Toplevel1 = LiveMosher1.Toplevel1(top if HIDE_TOOLBAR else self.root)
         self.top: tk.Tk = self.w.top
-        self.top.minsize(945, 540)
+        self.top.minsize(int(945 * self.scale), int(540 * self.scale))
         self.load_fonts()
 
         self.editor = CodeEditor(self.w.scrolledtext_script_editor, font_size=11 if not IS_MAC else 14)
@@ -149,6 +163,28 @@ class LiveMosherGui:
         self.button1_pressed_point = (0, 0)
         self.button1_pressed_window_pos = (0, 0)
         self.resizing_window = False
+
+    def measure_scale(self):
+        root1 = tk.Tk()
+        root1.withdraw() # Hide the main window
+        style = ttk.Style(root1)
+
+        default_font = tk.font.nametofont(style.lookup('TButton', "font"))
+        font_size = default_font.cget("size")
+        font_family = default_font.cget("family")
+        print('UI font_family:', font_family, 'size:', font_size)
+
+        font = tkfont.Font(family=font_family, size=24)
+        width =  font.measure("W")
+        print('"W" width:', width, font.cget("family"))
+        if IS_WIN:
+            ref_width = 30
+        elif IS_LINUX:
+            ref_width = 32
+        else:
+            ref_width = 23
+        return width / ref_width
+
 
     def load_fonts(self):
         '''Workaround a bug in tkinter when loading fonts from paths with spaces'''
@@ -279,9 +315,17 @@ class LiveMosherGui:
         if self.top_height is None:
             height = self.top.winfo_height()
             width = self.top.winfo_width()
+
             if height > 10 and width > 10:
+                # Bottom position of scrolledText_console
+                y = int(self.w.scrolledText_console.place_info()['y']) + int(self.w.scrolledText_console.place_info()['height'])
+                height = int((y + 10) * self.scale)
                 self.top_height = height
                 self.top_width = width
+
+                self.top.geometry(f'{int(width * 1)}x{height}')
+                self.scale_widgets(self.top)
+
                 for slave in self.top.place_slaves():
                     self.slaves_org_geo_map[slave] = slave.place_info()
                 self.org_geo_top = {'x': 0, 'y': 0, 'width': width, 'height': height}
@@ -292,6 +336,37 @@ class LiveMosherGui:
 
                 # Travers all widgets in the app and for all button widgets disable takefocus
                 self.fix_labels_font(self.top)
+
+    def scale_widgets(self, top):
+        skip_scaling = ('TScale', 'Canvas')
+        scaled = {}
+        def traverse_widgets(widget):
+            def scale_widget(widget):
+                if 'place_info' in dir(widget):
+                    info = widget.place_info()
+                    alias = widget.winfo_class()
+                    skip_aliases = ('Text', 'Listbox')
+                    if 'width' in info and 'height' in info and 'x' in info and 'y' in info and alias not in skip_aliases:
+                        # if alias not in ('TButton', 'Label', 'TEntry'):
+                        #     print('scaling widget:', alias, widget)
+                        x = int(info['x'])
+                        y = int(info['y'])
+                        w = int(info['width'])
+                        h = int(info['height'])
+                        if alias in skip_scaling:
+                            h = h / self.scale
+                        widget.place(x=int(x * self.scale), y=int(y * self.scale), width=int(w * self.scale), height=int(h * self.scale))
+
+            if not scaled.get(widget):
+                scale_widget(widget)
+                scaled[widget] = True
+            else:
+                print('skipping:', widget, 'already scaled')
+            # Scale all widgets position and size
+            for child in widget.winfo_children():
+                traverse_widgets(child)
+
+        traverse_widgets(top)
 
     def fix_labels_font(self, widget):
         for child in widget.winfo_children():
@@ -337,9 +412,6 @@ class LiveMosherGui:
                 if widget in widgets_stick_bottom:
                     y = top_height - top_org_height + int(org_geo['y'])
                     widget.place(y=y)
-                    if widget == self.w.scrolledText_console:
-                        height = int(org_geo['height']) + 20
-                        widget.place(height=height)
 
                 if widget in widgets_stick_right:
                     x = top_width - top_org_width + int(org_geo['x'])
@@ -438,11 +510,17 @@ class LiveMosherGui:
 
     def show_about_dialog(self):
         root1 = tk.Toplevel(self.root)
-        root1.transient(self.root)
-        root1.wait_visibility()
-        root1.grab_set()
 
         w = LiveMosher1.ToplevelAbout(root1)
+        root1.resizable(1,  1)
+        width = int(220 * self.scale)
+        height = int(243 * self.scale)
+        # Place at the center of the parent
+        x = self.root.winfo_x() + (self.root.winfo_width() - width) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - height) // 2
+        root1.geometry(f'{width}x{height}+{x}+{y}')
+        root1.resizable(0,  0)
+
         w.button_ok.configure(command=root1.destroy)
         w.label_name.bind("<Button-1>", lambda _event: self.open_url(REPO_URL))
         text = w.label_name.cget('text')
@@ -461,13 +539,11 @@ class LiveMosherGui:
                     child.config(overrelief='flat')
 
         self.fix_labels_font(root1)
+        self.scale_widgets(root1)
 
-        # Place at the center of the parent
-        root1.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width() - root1.winfo_width()) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - root1.winfo_height()) // 2
-        root1.geometry(f'+{x}+{y}')
-
+        root1.transient(self.root)
+        root1.wait_visibility()
+        root1.grab_set()
         self.root.wait_window(root1)
 
 
