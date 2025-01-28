@@ -41,4 +41,6 @@ pyinstaller \
   "$MAIN" && \
 cp -r Examples "$DISTAPP" && \
 mkdir -p "dist/$OS/$APPNAME/_internal/ffglitch" && \
-cp -r bin/ffglitch/$OS/* "dist/$OS/$APPNAME/_internal/ffglitch"
+cp -r bin/ffglitch/$OS/* "dist/$OS/$APPNAME/_internal/ffglitch" && \
+rm "dist/$OS/$APPNAME/_internal/libstdc++.so.6" && \
+rm "dist/$OS/$APPNAME/_internal/libcrypto.so.1.1"
