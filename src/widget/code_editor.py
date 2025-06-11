@@ -95,6 +95,9 @@ Right-click for more options
                 self.text_widget.config(xscrollcommand=child.set)
 
         self.text_widget.configure(background=style.background_color or '#ffffff')
+        # Force black text color to prevent inheritance from macOS Dark Mode
+        self.text_widget.configure(foreground='black')
+
         cfg = {
             'color':        '#888' or None,
             'bold':         False,
@@ -121,7 +124,7 @@ Right-click for more options
                                background=f'#{cfg["bgcolor"]}' if cfg["bgcolor"] else None,
                                underline=cfg['underline'])
 
-        # Define toektn for triple slashes: ///
+        # Define token for triple slashes: ///
         self.text_widget.tag_configure('Token.Comment.TripleSlash', foreground='green', font=(*font, 'bold'))
 
         self.filepath: str = None
