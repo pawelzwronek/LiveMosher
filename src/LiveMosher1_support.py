@@ -165,25 +165,53 @@ class LiveMosherGui:
         self.resizing_window = False
 
     def measure_scale(self):
-        root1 = tk.Tk()
-        root1.withdraw() # Hide the main window
-        style = ttk.Style(root1)
+        root1 = None
+        try:
+            root1 = tk.Tk()
+            root1.withdraw() # Hide the main window
 
-        default_font = tk.font.nametofont(style.lookup('TButton', "font"))
-        font_size = default_font.cget("size")
-        font_family = default_font.cget("family")
-        print('UI font_family:', font_family, 'size:', font_size)
+            # Force initialization of default fonts
+            root1.update_idletasks()
 
-        font = tkfont.Font(family=font_family, size=24)
-        width =  font.measure("W")
-        print('"W" width:', width, font.cget("family"))
-        if IS_WIN:
-            ref_width = 30
-        elif IS_LINUX:
-            ref_width = 32
-        else:
-            ref_width = 23
-        return width / ref_width
+            style = ttk.Style(root1)
+
+            # Try to get the font from TButton style, with fallback
+            try:
+                font_name = style.lookup('TButton', "font")
+                if font_name:
+                    default_font = tkfont.nametofont(font_name)
+                else:
+                    # Fallback to TkDefaultFont if no specific font is set
+                    default_font = tkfont.nametofont("TkDefaultFont")
+            except tk.TclError:
+                # If named fonts don't exist, create a fallback font
+                default_font = tkfont.Font(family="Helvetica", size=10)
+                print_warn("Default fonts not available, using fallback")
+
+            font_size = default_font.cget("size")
+            font_family = default_font.cget("family")
+            print('UI font_family:', font_family, 'size:', font_size)
+
+            font = tkfont.Font(family=font_family, size=24)
+            width = font.measure("W")
+            print('"W" width:', width, font.cget("family"))
+
+            if IS_WIN:
+                ref_width = 30
+            elif IS_LINUX:
+                ref_width = 32
+            else:
+                ref_width = 23
+
+            return width / ref_width
+
+        except Exception as e:
+            print_error(f"Error measuring scale: {e}")
+            # Return a sensible default scale
+            return 1.0
+        finally:
+            if root1:
+                root1.destroy()
 
 
     def load_fonts(self):
