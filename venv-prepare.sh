@@ -16,4 +16,7 @@ echo "Setting up virtual environment for $OS"
 
 python3 -m venv venv-$OS
 source venv-$OS/bin/activate
+if [ "$OS" = "linux" ]; then
+    python -m pip install scikit-build
+fi
 pip install -r requirements-$OS.txt
