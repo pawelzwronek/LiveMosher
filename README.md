@@ -56,7 +56,9 @@ Have `python` (Windows) or `python3` installed. Building must take place on the 
  - see `dist/win` for the executable
 
 ## Linux
- - install required packages: `sudo apt install binutils python3-venv python3-tk`
+ - install required packages:
+     - `sudo apt update`
+     - `sudo apt install python3-venv python3-tk binutils cmake build-essential tcl-dev tk-dev`
  - run `venv-prepare.sh` once
  - run `run_pyinstaller-linux.sh` to build from the source code for Linux
  - see `dist/linux` for the executable
